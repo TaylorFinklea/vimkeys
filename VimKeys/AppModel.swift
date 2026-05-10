@@ -12,39 +12,53 @@ final class AppModel: ObservableObject {
     @Published private(set) var tapErrorActive: Bool = false
     @Published private(set) var updateAvailable: Bool = false
 
+    private let settingsStore: SettingsStore
     private let eventTapService: EventTapService
     private let safariObserver: SafariObserver
     private let launchAtLoginController: LaunchAtLoginController
+    private let overlayManager: OverlayManager
     private let userDefaults: UserDefaults
 
     static let didShowLaunchAtLoginPromptKey = "didShowLaunchAtLoginPrompt"
 
     init(
-        settings: VimSettings = .v1Default,
+        settingsStore: SettingsStore = .shared,
         eventTapService: EventTapService? = nil,
         launchAtLoginController: LaunchAtLoginController? = nil,
+        overlayManager: OverlayManager? = nil,
         userDefaults: UserDefaults = .standard
     ) {
-        self.settings = settings
+        self.settingsStore = settingsStore
         self.userDefaults = userDefaults
+        let loadedSettings = settingsStore.load()
+        self.settings = loadedSettings
         permissionState = PermissionController.currentState()
 
-        let service = eventTapService ?? EventTapService(settings: settings)
+        let service = eventTapService ?? EventTapService(settings: loadedSettings)
         self.eventTapService = service
 
         let controller = launchAtLoginController ?? LaunchAtLoginController()
         self.launchAtLoginController = controller
         launchAtLoginEnabled = controller.isEnabled
 
-        // Construct observer with a placeholder closure first; rewire after
-        // self is fully initialized (Swift can't capture self in a property
-        // initializer until init returns).
-        var safariCallback: ((Bool) -> Void)?
-        safariObserver = SafariObserver(onFrontmostChange: { isFrontmost in
-            safariCallback?(isFrontmost)
-        })
-        safariCallback = { [weak self] isFrontmost in
+        let manager = overlayManager ?? OverlayManager()
+        self.overlayManager = manager
+
+        // Wire SafariObserver callbacks via a deferred closure so we can
+        // reference `self` once init returns. The Bool flows through
+        // SafariObserver -> AppModel -> EventTapService -> EventTapEngine ->
+        // VimStateMachine on the engine thread.
+        var frontmostCallback: ((Bool) -> Void)?
+        var focusCallback: ((Bool) -> Void)?
+        safariObserver = SafariObserver(
+            onFrontmostChange: { isFrontmost in frontmostCallback?(isFrontmost) },
+            onFocusEditableChange: { isEditable in focusCallback?(isEditable) }
+        )
+        frontmostCallback = { [weak self] isFrontmost in
             self?.safariFrontmostChanged(isFrontmost)
+        }
+        focusCallback = { [weak self] isEditable in
+            self?.safariFocusEditableChanged(isEditable)
         }
 
         service.onModeChange = { [weak self] mode in
@@ -61,6 +75,16 @@ final class AppModel: ObservableObject {
         service.onTapRecovered = { [weak self] in
             Task { @MainActor in
                 self?.tapErrorActive = false
+            }
+        }
+        service.onShowHelp = { [weak self] in
+            Task { @MainActor in
+                self?.overlayManager.showHelp()
+            }
+        }
+        service.onDismissOverlay = { [weak self] in
+            Task { @MainActor in
+                self?.overlayManager.dismiss()
             }
         }
 
@@ -130,6 +154,13 @@ final class AppModel: ObservableObject {
         setLaunchAtLogin(!launchAtLoginEnabled)
     }
 
+    func setInsertModeBehavior(_ behavior: InsertModeBehavior) {
+        guard settings.insertModeBehavior != behavior else { return }
+        settings.insertModeBehavior = behavior
+        settingsStore.save(settings)
+        eventTapService.updateSettings(settings)
+    }
+
     func requestPermission() {
         let granted = PermissionController.requestListenAccess()
         refreshPermissionState()
@@ -154,13 +185,18 @@ final class AppModel: ObservableObject {
             lastError = "VimKeys could not start the global event tap."
         } else {
             lastError = nil
-            // Re-seed Safari frontmost state into the new engine.
+            // Re-seed Safari frontmost state into the new engine. The AX
+            // focus observer (if attached) will fire its own seed.
             eventTapService.updateSafariFrontmost(SafariObserver.isSafariFrontmost())
         }
     }
 
     func safariFrontmostChanged(_ isFrontmost: Bool) {
         eventTapService.updateSafariFrontmost(isFrontmost)
+    }
+
+    func safariFocusEditableChanged(_ isEditable: Bool) {
+        eventTapService.updateFocusEditable(isEditable)
     }
 
     var menuBarVariant: (variant: MenuBarIconView.Variant, badge: Bool) {

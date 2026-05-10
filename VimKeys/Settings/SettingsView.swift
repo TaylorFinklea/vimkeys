@@ -49,6 +49,25 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                Section("Insert mode") {
+                    Picker(
+                        "Switch into insert mode",
+                        selection: Binding(
+                            get: { model.settings.insertModeBehavior },
+                            set: { model.setInsertModeBehavior($0) }
+                        )
+                    ) {
+                        ForEach(InsertModeBehavior.allCases) { behavior in
+                            Text(behavior.title).tag(behavior)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text("Auto-detect uses Accessibility to flip into insert mode whenever Safari focuses a text input, and back to normal mode when focus leaves. Manual mode ignores focus changes \u{2014} press i to enter insert mode and Esc to leave it.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("Updates") {
                     Text("Automatic updates are disabled in this pre-release build. Use the menu-bar Check for Updates\u{2026} button to check manually.")
                         .font(.footnote)

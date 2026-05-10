@@ -9,6 +9,7 @@ struct MenuBarIconView: View {
     enum Variant: Equatable {
         case off
         case normal
+        case insert
         case denied
         case listenOnly
         case tapError
@@ -25,6 +26,7 @@ struct MenuBarIconView: View {
             switch self {
             case .off:        return "VimKeys, Safari not frontmost"
             case .normal:     return "VimKeys, normal mode active"
+            case .insert:     return "VimKeys, insert mode \u{2014} typing into text input"
             case .denied:     return "VimKeys, input monitoring permission denied"
             case .listenOnly: return "VimKeys, listen-only mode \u{2014} scroll bindings disabled"
             case .tapError:   return "VimKeys, event tap error"
@@ -81,6 +83,24 @@ struct MenuBarIconView: View {
                 p.addLine(to: CGPoint(x: 15.0, y: 12.5))
             }
             ctx.stroke(v, with: .color(variant.tint), style: stroke)
+
+        case .insert:
+            // Same v glyph, plus a small "I" in the lower-left corner so
+            // the user knows VimKeys has stepped aside for typing.
+            let stroke = StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round)
+            let v = Path { p in
+                p.move(to: CGPoint(x: 10.0, y: 13.0))
+                p.addLine(to: CGPoint(x: 12.5, y: 17.5))
+                p.addLine(to: CGPoint(x: 15.0, y: 13.0))
+            }
+            ctx.stroke(v, with: .color(variant.tint.opacity(0.55)), style: stroke)
+            let iStroke = StrokeStyle(lineWidth: 1.4, lineCap: .round)
+            let iBadge = Path { p in
+                p.move(to: CGPoint(x: 5.5, y: 13.5)); p.addLine(to: CGPoint(x: 7.5, y: 13.5))
+                p.move(to: CGPoint(x: 6.5, y: 13.5)); p.addLine(to: CGPoint(x: 6.5, y: 17.0))
+                p.move(to: CGPoint(x: 5.5, y: 17.0)); p.addLine(to: CGPoint(x: 7.5, y: 17.0))
+            }
+            ctx.stroke(iBadge, with: .color(variant.tint), style: iStroke)
 
         case .denied:
             // Diagonal slash from (5,6) to (19,18) — denied.
@@ -145,10 +165,11 @@ func resolveMenuBarVariant(
     switch mode {
     case .disabled:
         return (.off, updateAvailable)
-    case .normal, .insert, .find, .hint, .vomnibar:
-        // Everything other than .disabled is "active vim mode" at V-M1.
-        // Insert / disabled-by-site / suspended visuals arrive in their
-        // own milestones.
+    case .insert:
+        return (.insert, updateAvailable)
+    case .normal, .find, .hint, .vomnibar, .help:
+        // .help is transient; treat as normal for icon. Disabled-by-site
+        // and suspended visuals arrive in V-M5.
         return (.normal, updateAvailable)
     }
 }
@@ -157,12 +178,13 @@ func resolveMenuBarVariant(
 extension VimMode {
     var menuTitle: String {
         switch self {
-        case .disabled:                   return "Off"
-        case .normal:                     return "Normal"
-        case .insert:                     return "Insert"
-        case .find:                       return "Find"
-        case .hint:                       return "Hint"
-        case .vomnibar:                   return "Vomnibar"
+        case .disabled: return "Off"
+        case .normal:   return "Normal"
+        case .insert:   return "Insert"
+        case .find:     return "Find"
+        case .hint:     return "Hint"
+        case .vomnibar: return "Vomnibar"
+        case .help:     return "Help"
         }
     }
 }

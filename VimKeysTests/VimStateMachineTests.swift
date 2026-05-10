@@ -417,24 +417,257 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(decision.intent, .passThrough)
     }
 
-    /// Single-character bindings whose owning milestone (V-M2..V-M4) hasn't
-    /// landed yet must still be defined in the catalog but resolve to
-    /// `.passThrough` — never silently consumed.
-    func testDecideForwardCompatBindingsPassThroughAtVM1() {
+    /// Single-character bindings whose owning milestone (V-M3 / V-M4)
+    /// hasn't landed yet must still be defined in the catalog but resolve
+    /// to `.passThrough` — never silently consumed. V-M2 bindings (find /
+    /// history / reload / insert / help) are now wired and assert
+    /// elsewhere.
+    func testDecideForwardCompatBindingsPassThroughAtVM2() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
 
-        for char in ["f", "F", "/", "n", "N", "H", "L", "r", "R",
-                     "o", "O", "b", "B", "T", "p", "P", "i", "?"] {
+        for char in ["f", "F", "o", "O", "b", "B", "T", "p", "P"] {
             let decision = machine.decide(
                 eventType: .keyDown,
-                keyCode: 0x00, // keycode is ignored for character-keyed bindings
+                keyCode: 0x00,
                 characters: char,
                 flags: char == char.uppercased() && char != char.lowercased() ? .maskShift : [],
                 timestamp: baseTimestamp
             )
             XCTAssertEqual(decision.intent, .passThrough,
-                           "Forward-compat char '\(char)' should pass through at V-M1")
+                           "V-M3/V-M4 char '\(char)' should pass through at V-M2")
+        }
+    }
+
+    // MARK: - V-M2 bindings: find / history / reload / insert / Esc / help
+
+    func testDecideSlashEmitsCmdF() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x2C, characters: "/",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.f, flags: .maskCommand))
+    }
+
+    func testDecideNEmitsCmdG() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x2D, characters: "n",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.g, flags: .maskCommand))
+    }
+
+    func testDecideShiftNEmitsCmdShiftG() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x2D, characters: "N",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.g, flags: [.maskCommand, .maskShift]))
+    }
+
+    func testDecideShiftHEmitsCmdLeftBracket() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x04, characters: "H",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.leftBracket, flags: .maskCommand))
+    }
+
+    func testDecideShiftLEmitsCmdRightBracket() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x25, characters: "L",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.rightBracket, flags: .maskCommand))
+    }
+
+    func testDecideREmitsCmdR() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x0F, characters: "r",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.r, flags: .maskCommand))
+    }
+
+    func testDecideShiftREmitsCmdShiftR() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x0F, characters: "R",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskShift]))
+    }
+
+    func testDecideIEntersInsertMode() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x22, characters: "i",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .consume)
+        XCTAssertTrue(d.modeDidChange)
+        XCTAssertEqual(machine.mode, .insert)
+    }
+
+    func testDecideEscInInsertReturnsToNormalAndUnfocuses() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x22, characters: "i",
+                           flags: [], timestamp: baseTimestamp)
+
+        let esc = machine.decide(
+            eventType: .keyDown,
+            keyCode: VimKeyCode.escape,
+            characters: nil,
+            flags: [],
+            timestamp: baseTimestamp + 100_000_000
+        )
+        XCTAssertEqual(esc.intent, .unfocusActiveElement)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testDecideEscInNormalNoneIsPassThrough() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let esc = machine.decide(
+            eventType: .keyDown,
+            keyCode: VimKeyCode.escape,
+            characters: nil,
+            flags: [],
+            timestamp: baseTimestamp
+        )
+        XCTAssertEqual(esc.intent, .passThrough)
+        XCTAssertFalse(esc.modeDidChange)
+    }
+
+    func testDecideEscInNormalWithCountCancelsPrefix() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x17, characters: "5",
+                           flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(machine.mode, .normal(prefix: .count(5)))
+
+        let esc = machine.decide(
+            eventType: .keyDown,
+            keyCode: VimKeyCode.escape,
+            characters: nil,
+            flags: [],
+            timestamp: baseTimestamp + 50_000_000
+        )
+        XCTAssertEqual(esc.intent, .consume)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testDecideEscInDisabledPassesThrough() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        let esc = machine.decide(
+            eventType: .keyDown,
+            keyCode: VimKeyCode.escape,
+            characters: nil,
+            flags: [],
+            timestamp: baseTimestamp
+        )
+        XCTAssertEqual(esc.intent, .passThrough)
+    }
+
+    func testDecideQuestionMarkShowsHelp() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x2C, characters: "?",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .showOverlay(.help))
+        XCTAssertEqual(machine.mode, .help)
+    }
+
+    func testDecideAnyKeyDuringHelpDismisses() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x2C, characters: "?",
+                           flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(machine.mode, .help)
+
+        let dismiss = machine.decide(
+            eventType: .keyDown,
+            keyCode: 0x26,
+            characters: "j",
+            flags: [],
+            timestamp: baseTimestamp + 100_000_000
+        )
+        XCTAssertEqual(dismiss.intent, .dismissOverlay)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testDecideEscDuringHelpDismisses() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x2C, characters: "?",
+                           flags: .maskShift, timestamp: baseTimestamp)
+
+        let esc = machine.decide(
+            eventType: .keyDown,
+            keyCode: VimKeyCode.escape,
+            characters: nil,
+            flags: [],
+            timestamp: baseTimestamp + 100_000_000
+        )
+        XCTAssertEqual(esc.intent, .dismissOverlay)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    // MARK: - Insert mode + AX focus auto-detect
+
+    func testUpdateFocusEditableEntersInsertWhenAutoDetect() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let decision = machine.updateFocusEditable(true)
+        XCTAssertNotNil(decision)
+        XCTAssertEqual(decision?.modeDidChange, true)
+        XCTAssertEqual(machine.mode, .insert)
+    }
+
+    func testUpdateFocusEditableExitsInsertWhenAutoDetect() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.updateFocusEditable(true)
+        XCTAssertEqual(machine.mode, .insert)
+
+        let decision = machine.updateFocusEditable(false)
+        XCTAssertEqual(decision?.modeDidChange, true)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testUpdateFocusEditableNoOpWhenManual() {
+        var settings = VimSettings.v1Default
+        settings.insertModeBehavior = .manual
+        var machine = VimStateMachine(settings: settings)
+        machine.updateSafariFrontmost(true)
+
+        XCTAssertNil(machine.updateFocusEditable(true))
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testUpdateFocusEditableNoOpWhenDisabled() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        XCTAssertNil(machine.updateFocusEditable(true))
+        XCTAssertEqual(machine.mode, .disabled)
+    }
+
+    func testInsertModePassesThroughNonEscKeys() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.updateFocusEditable(true)
+        XCTAssertEqual(machine.mode, .insert)
+
+        for char in ["j", "k", "h", "g", "G", "?", "/"] {
+            let d = machine.decide(
+                eventType: .keyDown,
+                keyCode: 0x00,
+                characters: char,
+                flags: [],
+                timestamp: baseTimestamp
+            )
+            XCTAssertEqual(d.intent, .passThrough,
+                           "Insert mode must pass '\(char)' through to Safari")
+            XCTAssertEqual(machine.mode, .insert,
+                           "Insert mode must not change on character keys")
         }
     }
 }

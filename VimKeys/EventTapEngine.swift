@@ -24,6 +24,8 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     private var stateMachine: VimStateMachine
     private let onModeChange: (VimMode) -> Void
     private let onTapError: (String) -> Void
+    private let onShowHelp: () -> Void
+    private let onDismissOverlay: () -> Void
 
     private var thread: Thread?
     private var tapPort: CFMachPort?
@@ -36,11 +38,15 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     init(
         settings: VimSettings,
         onModeChange: @escaping (VimMode) -> Void,
-        onTapError: @escaping (String) -> Void
+        onTapError: @escaping (String) -> Void,
+        onShowHelp: @escaping () -> Void = {},
+        onDismissOverlay: @escaping () -> Void = {}
     ) {
         stateMachine = VimStateMachine(settings: settings)
         self.onModeChange = onModeChange
         self.onTapError = onTapError
+        self.onShowHelp = onShowHelp
+        self.onDismissOverlay = onDismissOverlay
     }
 
     func updateSettings(_ settings: VimSettings) {
@@ -54,8 +60,17 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     /// so the state machine is only ever mutated from one place.
     func updateSafariFrontmost(_ isFrontmost: Bool) {
         guard let thread else { return }
-        let flag = SafariFrontmostFlag(isFrontmost: isFrontmost)
+        let flag = BoolBox(value: isFrontmost)
         perform(#selector(updateSafariFrontmostOnThread(_:)), on: thread, with: flag, waitUntilDone: false)
+    }
+
+    /// Tells the state machine whether Safari's focused element is editable.
+    /// Honored only when `InsertModeBehavior == .autoDetect`. Safe to call
+    /// from any thread.
+    func updateFocusEditable(_ isEditable: Bool) {
+        guard let thread else { return }
+        let flag = BoolBox(value: isEditable)
+        perform(#selector(updateFocusEditableOnThread(_:)), on: thread, with: flag, waitUntilDone: false)
     }
 
     /// Idempotently re-enables the event tap on the engine thread. Safe to
@@ -91,15 +106,27 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     }
 
     @objc
-    private func updateSafariFrontmostOnThread(_ flag: SafariFrontmostFlag) {
+    private func updateSafariFrontmostOnThread(_ flag: BoolBox) {
         stateMachineLock.lock()
-        let decision = stateMachine.updateSafariFrontmost(flag.isFrontmost)
+        let decision = stateMachine.updateSafariFrontmost(flag.value)
         let mode = stateMachine.mode
         stateMachineLock.unlock()
 
         if decision != nil {
             onModeChange(mode)
             cancelPrefixTimeout()
+        }
+    }
+
+    @objc
+    private func updateFocusEditableOnThread(_ flag: BoolBox) {
+        stateMachineLock.lock()
+        let decision = stateMachine.updateFocusEditable(flag.value)
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+
+        if decision != nil {
+            onModeChange(mode)
         }
     }
 
@@ -245,14 +272,31 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             postScrollToEdge(edge)
             return nil
 
-        case .postKey, .showOverlay, .updateOverlay, .dismissOverlay,
+        case let .postKey(virtualKey, flags):
+            postKey(virtualKey: virtualKey, flags: flags)
+            return nil
+
+        case .showOverlay(.help):
+            onShowHelp()
+            return nil
+
+        case .dismissOverlay:
+            onDismissOverlay()
+            return nil
+
+        case .unfocusActiveElement:
+            // Post a plain Escape: Safari uses it to blur the focused field.
+            postKey(virtualKey: VimKeyCode.escape, flags: [])
+            return nil
+
+        case .updateOverlay,
              .requestHintTraversal, .dispatchHintClick,
              .requestSafariURL, .requestBookmarks, .requestOpenTabs,
-             .openURL, .copyToClipboard, .unfocusActiveElement,
+             .openURL, .copyToClipboard,
              .toggleSuspended, .showHelp:
-            // Forward-compat: future milestones bind these. V-M1 falls back
-            // to passThrough so binding cases that escape into the catalog
-            // accidentally don't silently swallow keystrokes.
+            // Forward-compat: future milestones bind these. Falling back
+            // to passThrough means a binding case that escapes into the
+            // catalog accidentally won't silently swallow keystrokes.
             return Unmanaged.passUnretained(originalEvent)
         }
     }
@@ -301,6 +345,13 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             virtualKey = VimKeyCode.downArrow
         }
 
+        postKey(virtualKey: virtualKey, flags: .maskCommand)
+    }
+
+    /// Synthesize a keyDown + keyUp for `virtualKey` with `flags`. Each
+    /// posted event is tagged with `syntheticEventTag` so the tap callback
+    /// passes them through on re-entry instead of re-processing.
+    private func postKey(virtualKey: CGKeyCode, flags: CGEventFlags) {
         guard let source = CGEventSource(stateID: .hidSystemState) else { return }
 
         for isKeyDown in [true, false] {
@@ -310,7 +361,7 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
                 keyDown: isKeyDown
             ) else { continue }
 
-            event.flags = .maskCommand
+            event.flags = flags
             event.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
             event.post(tap: .cghidEventTap)
         }
@@ -389,9 +440,9 @@ final class TapLivenessProbe: NSObject {
 
 /// Single-field Objective-C-bridgeable carrier so we can hop a `Bool` over
 /// to the tap thread via `perform(_:on:thread:with:)`.
-final class SafariFrontmostFlag: NSObject {
-    let isFrontmost: Bool
-    init(isFrontmost: Bool) {
-        self.isFrontmost = isFrontmost
+final class BoolBox: NSObject {
+    let value: Bool
+    init(value: Bool) {
+        self.value = value
     }
 }

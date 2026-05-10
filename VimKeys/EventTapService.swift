@@ -38,6 +38,8 @@ final class EventTapService {
     var onModeChange: ((VimMode) -> Void)?
     var onTapError: ((String) -> Void)?
     var onTapRecovered: (() -> Void)?
+    var onShowHelp: (() -> Void)?
+    var onDismissOverlay: (() -> Void)?
 
     private let lock = NSLock()
     private var settings: VimSettings
@@ -65,6 +67,13 @@ final class EventTapService {
         engine?.updateSafariFrontmost(isFrontmost)
     }
 
+    func updateFocusEditable(_ isEditable: Bool) {
+        lock.lock()
+        let engine = engine
+        lock.unlock()
+        engine?.updateFocusEditable(isEditable)
+    }
+
     @discardableResult
     func start() -> Bool {
         stop()
@@ -81,6 +90,12 @@ final class EventTapService {
             },
             onTapError: { [weak self] message in
                 self?.onTapError?(message)
+            },
+            onShowHelp: { [weak self] in
+                self?.onShowHelp?()
+            },
+            onDismissOverlay: { [weak self] in
+                self?.onDismissOverlay?()
             }
         )
         let started = engine.start()

@@ -1,0 +1,397 @@
+import AppKit
+import CoreGraphics
+import Foundation
+
+/// Owns the `CGEvent.tapCreate` handle on a dedicated `VimKeys.EventTap`
+/// thread with its own `CFRunLoop`. Pure-value `VimStateMachine` lives
+/// inside; per-event `decide(...)` runs on the tap thread, intent
+/// dispatch (scroll wheel, Cmd+Up/Down, etc.) runs in the same callback
+/// for latency.
+final class EventTapEngine: NSObject, @unchecked Sendable {
+    /// Tag stamped onto every event we synthesize (scroll wheel,
+    /// Cmd+Up/Down for scroll-to-edge). On re-entry the tap callback
+    /// notices the tag and passes through without re-processing — never
+    /// strip this or the engine will loop on its own emissions.
+    private static let syntheticEventTag: Int64 = 0x564B595300000000  // "VKYS\0\0\0\0"
+
+    /// One-shot timer that fires after 1500 ms of no follow-up to reset a
+    /// pending count / `g` / `y` prefix. Lives on `timerQueue` so it
+    /// doesn't block the tap callback; on fire, hops back to the tap
+    /// thread to mutate state machine.
+    private static let prefixTimeoutNanoseconds: UInt64 = 1_500_000_000
+
+    private let stateMachineLock = NSLock()
+    private var stateMachine: VimStateMachine
+    private let onModeChange: (VimMode) -> Void
+    private let onTapError: (String) -> Void
+
+    private var thread: Thread?
+    private var tapPort: CFMachPort?
+    private var runLoopSource: CFRunLoopSource?
+    private var runLoop: CFRunLoop?
+
+    private let timerQueue = DispatchQueue(label: "io.taylorfinklea.vimkeys.prefixTimer")
+    private var pendingTimeoutTimer: DispatchSourceTimer?
+
+    init(
+        settings: VimSettings,
+        onModeChange: @escaping (VimMode) -> Void,
+        onTapError: @escaping (String) -> Void
+    ) {
+        stateMachine = VimStateMachine(settings: settings)
+        self.onModeChange = onModeChange
+        self.onTapError = onTapError
+    }
+
+    func updateSettings(_ settings: VimSettings) {
+        stateMachineLock.lock()
+        stateMachine.settings = settings
+        stateMachineLock.unlock()
+    }
+
+    /// Tells the state machine whether Safari (or Safari Tech Preview) is
+    /// frontmost. Safe to call from any thread; hops to the engine thread
+    /// so the state machine is only ever mutated from one place.
+    func updateSafariFrontmost(_ isFrontmost: Bool) {
+        guard let thread else { return }
+        let flag = SafariFrontmostFlag(isFrontmost: isFrontmost)
+        perform(#selector(updateSafariFrontmostOnThread(_:)), on: thread, with: flag, waitUntilDone: false)
+    }
+
+    /// Idempotently re-enables the event tap on the engine thread. Safe to
+    /// call from any thread. If the tap port no longer exists this is a no-op.
+    func reEnableTap() {
+        guard let thread else { return }
+        perform(#selector(reEnableTapOnThread), on: thread, with: nil, waitUntilDone: true)
+    }
+
+    /// Whether the kernel still considers our tap active. Synchronously hops
+    /// to the engine thread to read `tapPort`.
+    func isTapAlive() -> Bool {
+        guard let thread else { return false }
+        let probe = TapLivenessProbe()
+        perform(#selector(checkTapAliveOnThread(_:)), on: thread, with: probe, waitUntilDone: true)
+        return probe.isAlive
+    }
+
+    @objc
+    private func reEnableTapOnThread() {
+        if let tapPort {
+            CGEvent.tapEnable(tap: tapPort, enable: true)
+        }
+    }
+
+    @objc
+    private func checkTapAliveOnThread(_ probe: TapLivenessProbe) {
+        if let tapPort {
+            probe.isAlive = CGEvent.tapIsEnabled(tap: tapPort)
+        } else {
+            probe.isAlive = false
+        }
+    }
+
+    @objc
+    private func updateSafariFrontmostOnThread(_ flag: SafariFrontmostFlag) {
+        stateMachineLock.lock()
+        let decision = stateMachine.updateSafariFrontmost(flag.isFrontmost)
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+
+        if decision != nil {
+            onModeChange(mode)
+            cancelPrefixTimeout()
+        }
+    }
+
+    func start() -> Bool {
+        let startup = EventTapStartup()
+        let thread = Thread(target: self, selector: #selector(runEventTapThread(_:)), object: startup)
+
+        self.thread = thread
+        thread.start()
+        startup.semaphore.wait()
+        return startup.didStart
+    }
+
+    func stop() {
+        cancelPrefixTimeout()
+
+        guard let thread else {
+            return
+        }
+
+        perform(#selector(stopRunLoop), on: thread, with: nil, waitUntilDone: true)
+        self.thread = nil
+    }
+
+    @objc
+    private func stopRunLoop() {
+        if let tapPort {
+            CGEvent.tapEnable(tap: tapPort, enable: false)
+            CFMachPortInvalidate(tapPort)
+        }
+
+        if let runLoopSource, let runLoop {
+            CFRunLoopRemoveSource(runLoop, runLoopSource, .commonModes)
+        }
+
+        tapPort = nil
+        runLoopSource = nil
+        if let runLoop {
+            CFRunLoopStop(runLoop)
+        }
+        runLoop = nil
+    }
+
+    @objc
+    private func runEventTapThread(_ startup: EventTapStartup) {
+        Thread.current.name = "VimKeys.EventTap"
+        runLoop = CFRunLoopGetCurrent()
+
+        let eventMask =
+            (1 << CGEventType.keyDown.rawValue)
+            | (1 << CGEventType.keyUp.rawValue)
+
+        let userInfo = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        guard let tapPort = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: CGEventMask(eventMask),
+            callback: { proxy, type, event, userInfo in
+                guard let userInfo else {
+                    return Unmanaged.passUnretained(event)
+                }
+
+                let engine = Unmanaged<EventTapEngine>.fromOpaque(userInfo).takeUnretainedValue()
+                return engine.handle(proxy: proxy, type: type, event: event)
+            },
+            userInfo: userInfo
+        ) else {
+            onTapError("VimKeys could not create the keyboard event tap.")
+            startup.semaphore.signal()
+            return
+        }
+
+        self.tapPort = tapPort
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tapPort, 0)
+        runLoopSource = source
+
+        if let source {
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+        }
+        CGEvent.tapEnable(tap: tapPort, enable: true)
+
+        startup.didStart = true
+        startup.semaphore.signal()
+        CFRunLoopRun()
+    }
+
+    private func handle(
+        proxy _: CGEventTapProxy,
+        type: CGEventType,
+        event: CGEvent
+    ) -> Unmanaged<CGEvent>? {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            reEnableTapOnThread()
+            return Unmanaged.passUnretained(event)
+        }
+
+        // Skip events we synthesized ourselves.
+        if event.getIntegerValueField(.eventSourceUserData) == Self.syntheticEventTag {
+            return Unmanaged.passUnretained(event)
+        }
+
+        guard type == .keyDown || type == .keyUp else {
+            return Unmanaged.passUnretained(event)
+        }
+
+        let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers
+
+        stateMachineLock.lock()
+        let decision = stateMachine.decide(
+            eventType: type,
+            keyCode: keyCode,
+            characters: characters,
+            flags: event.flags,
+            timestamp: event.timestamp
+        )
+        let modeAfter = stateMachine.mode
+        stateMachineLock.unlock()
+
+        if decision.modeDidChange {
+            onModeChange(modeAfter)
+        }
+
+        scheduleOrCancelTimeout(for: modeAfter)
+
+        return apply(intent: decision.intent, originalEvent: event)
+    }
+
+    private func apply(intent: VimIntent, originalEvent: CGEvent) -> Unmanaged<CGEvent>? {
+        switch intent {
+        case .passThrough:
+            return Unmanaged.passUnretained(originalEvent)
+
+        case .consume:
+            return nil
+
+        case let .scroll(direction, amount):
+            postScroll(direction: direction, amount: amount)
+            return nil
+
+        case let .scrollToEdge(edge):
+            postScrollToEdge(edge)
+            return nil
+
+        case .postKey, .showOverlay, .updateOverlay, .dismissOverlay,
+             .requestHintTraversal, .dispatchHintClick,
+             .requestSafariURL, .requestBookmarks, .requestOpenTabs,
+             .openURL, .copyToClipboard, .unfocusActiveElement,
+             .toggleSuspended, .showHelp:
+            // Forward-compat: future milestones bind these. V-M1 falls back
+            // to passThrough so binding cases that escape into the catalog
+            // accidentally don't silently swallow keystrokes.
+            return Unmanaged.passUnretained(originalEvent)
+        }
+    }
+
+    private func postScroll(direction: ScrollDirection, amount: ScrollAmount) {
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+
+        let lineMagnitude: Int32
+        switch amount {
+        case .lines(let n):
+            lineMagnitude = Int32(n)
+        case .halfPage(let n):
+            lineMagnitude = Int32(n * VimStateMachine.halfPageLinesApprox)
+        }
+
+        let wheel1: Int32
+        let wheel2: Int32
+        switch direction {
+        case .vertical:
+            wheel1 = lineMagnitude
+            wheel2 = 0
+        case .horizontal:
+            wheel1 = 0
+            wheel2 = lineMagnitude
+        }
+
+        guard let event = CGEvent(
+            scrollWheelEvent2Source: source,
+            units: .line,
+            wheelCount: 2,
+            wheel1: wheel1,
+            wheel2: wheel2,
+            wheel3: 0
+        ) else { return }
+
+        event.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
+        event.post(tap: .cghidEventTap)
+    }
+
+    private func postScrollToEdge(_ edge: VerticalEdge) {
+        let virtualKey: CGKeyCode
+        switch edge {
+        case .top:
+            virtualKey = VimKeyCode.upArrow
+        case .bottom:
+            virtualKey = VimKeyCode.downArrow
+        }
+
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+
+        for isKeyDown in [true, false] {
+            guard let event = CGEvent(
+                keyboardEventSource: source,
+                virtualKey: virtualKey,
+                keyDown: isKeyDown
+            ) else { continue }
+
+            event.flags = .maskCommand
+            event.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
+            event.post(tap: .cghidEventTap)
+        }
+    }
+
+    // MARK: - Prefix timeout
+
+    private func scheduleOrCancelTimeout(for mode: VimMode) {
+        let needsTimeout: Bool
+        switch mode {
+        case .normal(let prefix):
+            needsTimeout = prefix != .none
+        default:
+            needsTimeout = false
+        }
+
+        if needsTimeout {
+            schedulePrefixTimeout()
+        } else {
+            cancelPrefixTimeout()
+        }
+    }
+
+    private func schedulePrefixTimeout() {
+        timerQueue.async { [weak self] in
+            guard let self else { return }
+            self.pendingTimeoutTimer?.cancel()
+
+            let timer = DispatchSource.makeTimerSource(queue: self.timerQueue)
+            timer.schedule(
+                deadline: .now() + .nanoseconds(Int(Self.prefixTimeoutNanoseconds))
+            )
+            timer.setEventHandler { [weak self] in
+                guard let self else { return }
+                self.handlePrefixTimeoutFired()
+            }
+            self.pendingTimeoutTimer = timer
+            timer.resume()
+        }
+    }
+
+    private func cancelPrefixTimeout() {
+        timerQueue.async { [weak self] in
+            self?.pendingTimeoutTimer?.cancel()
+            self?.pendingTimeoutTimer = nil
+        }
+    }
+
+    private func handlePrefixTimeoutFired() {
+        pendingTimeoutTimer = nil
+        guard let thread else { return }
+        perform(#selector(commandTimeoutOnThread), on: thread, with: nil, waitUntilDone: false)
+    }
+
+    @objc
+    private func commandTimeoutOnThread() {
+        stateMachineLock.lock()
+        let decision = stateMachine.commandTimeout()
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+
+        if decision.modeDidChange {
+            onModeChange(mode)
+        }
+    }
+}
+
+final class EventTapStartup: NSObject {
+    let semaphore = DispatchSemaphore(value: 0)
+    var didStart = false
+}
+
+final class TapLivenessProbe: NSObject {
+    var isAlive = false
+}
+
+/// Single-field Objective-C-bridgeable carrier so we can hop a `Bool` over
+/// to the tap thread via `perform(_:on:thread:with:)`.
+final class SafariFrontmostFlag: NSObject {
+    let isFrontmost: Bool
+    init(isFrontmost: Bool) {
+        self.isFrontmost = isFrontmost
+    }
+}

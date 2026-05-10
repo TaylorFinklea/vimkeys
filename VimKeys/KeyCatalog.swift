@@ -124,11 +124,19 @@ struct VimBindings: Equatable {
     }
 }
 
-/// Vim-style virtual keys VimKeys cares about that don't have a printable
-/// character. Only used at V-M1 for `Esc`; expand as later milestones add
-/// keycode-keyed bindings.
+/// Virtual keys VimKeys posts as part of intent dispatch (find / history /
+/// reload / scroll-to-edge / unfocus). Hex values are the standard US-layout
+/// HID keycodes — the same constants `Carbon.HIToolbox.Events` exposes
+/// (e.g. `kVK_ANSI_F = 0x03`).
 enum VimKeyCode {
     static let escape: CGKeyCode = 0x35
     static let upArrow: CGKeyCode = 0x7E
     static let downArrow: CGKeyCode = 0x7D
+
+    // V-M2 key-pass-through targets.
+    static let f: CGKeyCode = 0x03
+    static let g: CGKeyCode = 0x05
+    static let r: CGKeyCode = 0x0F
+    static let leftBracket: CGKeyCode = 0x21
+    static let rightBracket: CGKeyCode = 0x1E
 }

@@ -1,10 +1,10 @@
 import CoreGraphics
 import Foundation
 
-/// Forward-compat mode set. V-M1 only enters `.disabled` and
-/// `.normal(prefix:)`. The other cases are defined so subsequent milestones
-/// can land without renaming or migrating the state machine's public
-/// surface.
+/// Forward-compat mode set. V-M1 only entered `.disabled` and
+/// `.normal(prefix:)`. V-M2 reaches `.insert` and `.help` too. The
+/// remaining cases (`.find`, `.hint`, `.vomnibar`) stay defined for
+/// V-M3 / V-M4 wiring without renaming the public surface.
 enum VimMode: Equatable {
     case disabled
     case insert
@@ -12,6 +12,8 @@ enum VimMode: Equatable {
     case find(buffer: String)
     case hint(HintState)
     case vomnibar(VomnibarState)
+    /// Transient overlay: any keystroke dismisses and is not re-dispatched.
+    case help
 }
 
 enum CommandPrefix: Equatable {
@@ -21,10 +23,10 @@ enum CommandPrefix: Equatable {
     case y(count: Int?)    // `y` pressed, awaiting yy/yf (V-M4)
 }
 
-/// V-M1 stub. Real shape arrives in V-M3 with link hints.
+/// V-M3 stub.
 struct HintState: Equatable {}
 
-/// V-M1 stub. Real shape arrives in V-M4 with vomnibar.
+/// V-M4 stub.
 struct VomnibarState: Equatable {}
 
 enum ScrollDirection: Equatable {
@@ -45,7 +47,6 @@ enum VerticalEdge: Equatable {
     case bottom
 }
 
-/// Forward-compat overlay placeholders. V-M1 doesn't render overlays.
 enum OverlayKind: Equatable {
     case help
 }
@@ -59,10 +60,11 @@ enum HintFilter: Equatable {
     case textInputsOnly
 }
 
-/// Every action the engine executes on behalf of the state machine. V-M1
-/// only exercises `.passThrough`, `.consume`, `.scroll(...)`, and
-/// `.scrollToEdge(...)`. Everything else exists for forward-compat with
-/// V-M2 / V-M3 / V-M4 / V-M5.
+/// Every action the engine executes on behalf of the state machine. V-M2
+/// reaches `.passThrough`, `.consume`, `.scroll(...)`, `.scrollToEdge(...)`,
+/// `.postKey(...)`, `.showOverlay(.help)`, `.dismissOverlay`, and
+/// `.unfocusActiveElement`. Everything else exists for forward-compat
+/// with V-M3 / V-M4 / V-M5.
 enum VimIntent: Equatable {
     case passThrough
     case consume
@@ -110,7 +112,6 @@ struct VimStateMachine {
 
     /// Approximate "half page" in line units. Until V-M3 wires AX viewport
     /// queries, the engine multiplies this by repeat count for `d` / `u`.
-    /// Refined in V-M3.
     static let halfPageLinesApprox: Int = 15
 
     /// Repeat-count cap. Prevents `999999999999j` posting a billion scroll
@@ -136,6 +137,24 @@ struct VimStateMachine {
         }
     }
 
+    /// Called by the engine when `SafariObserver`'s AX focus observer
+    /// reports the focused element's editability changed. Honors
+    /// `InsertModeBehavior`: in `.manual` mode, focus changes are ignored
+    /// and the user must press `i` / `Esc` explicitly.
+    @discardableResult
+    mutating func updateFocusEditable(_ isEditable: Bool) -> VimDecision? {
+        guard settings.insertModeBehavior == .autoDetect else { return nil }
+
+        switch mode {
+        case .normal where isEditable:
+            return setMode(.insert, intent: .passThrough)
+        case .insert where !isEditable:
+            return setMode(.normal(prefix: .none), intent: .passThrough)
+        default:
+            return nil
+        }
+    }
+
     /// Called by the engine on a 1500 ms one-shot timer after each prefix
     /// change. Cancels any pending count / `g` / `y` prefix.
     @discardableResult
@@ -155,21 +174,35 @@ struct VimStateMachine {
         flags: CGEventFlags,
         timestamp _: UInt64
     ) -> VimDecision {
-        // Only act on keyDown. Pass keyUp through transparently — V-M1's
-        // bindings are all keyDown-driven.
+        // Only act on keyDown. Pass keyUp through transparently.
         guard eventType == .keyDown else {
             return VimDecision(intent: .passThrough)
         }
 
-        // Disabled: pass through everything.
+        // Disabled: pass through everything (incl. Esc).
         if case .disabled = mode {
             return VimDecision(intent: .passThrough)
         }
 
-        // Modifier policy: any user-applied Cmd / Option / Control on a vim
-        // key means the user wants the chord to reach Safari intact, not be
-        // intercepted as a vim binding. Shift is allowed (it distinguishes
-        // `g` vs `G`, etc.).
+        // Help overlay: any key dismisses and is not re-dispatched.
+        if case .help = mode {
+            return setMode(.normal(prefix: .none), intent: .dismissOverlay)
+        }
+
+        // Esc handling is keycode-based, before character / modifier
+        // resolution, so it works in insert mode regardless of layout.
+        if keyCode == VimKeyCode.escape {
+            return decideEscape()
+        }
+
+        // Insert mode: every non-Esc key passes through to Safari.
+        if case .insert = mode {
+            return VimDecision(intent: .passThrough)
+        }
+
+        // Modifier policy on vim keys: any user-applied Cmd / Option /
+        // Control means the user wants the chord to reach Safari intact.
+        // Shift is allowed (it distinguishes `g` vs `G`, etc.).
         let suppressors: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl]
         if !flags.intersection(suppressors).isEmpty {
             return VimDecision(intent: .passThrough)
@@ -178,9 +211,33 @@ struct VimStateMachine {
         switch mode {
         case .normal(let prefix):
             return decideNormal(prefix: prefix, keyCode: keyCode, characters: characters)
-        case .disabled, .insert, .find, .hint, .vomnibar:
-            // Unreachable at V-M1 (insert/find/hint/vomnibar arrive in
-            // V-M2..V-M4); .disabled is handled above.
+        case .disabled, .insert, .find, .hint, .vomnibar, .help:
+            // Disabled / insert / help are handled above; .find / .hint /
+            // .vomnibar arrive in V-M3 / V-M4.
+            return VimDecision(intent: .passThrough)
+        }
+    }
+
+    // MARK: - Esc handling
+
+    private mutating func decideEscape() -> VimDecision {
+        switch mode {
+        case .insert:
+            // Return to normal AND post Escape to Safari so the focused
+            // input blurs (Safari handles Escape natively for inputs).
+            return setMode(.normal(prefix: .none), intent: .unfocusActiveElement)
+        case .normal(let prefix):
+            if prefix != .none {
+                // Cancel pending count / g prefix.
+                return setMode(.normal(prefix: .none), intent: .consume)
+            }
+            // Esc in normal-no-prefix is a no-op for vim; pass through so
+            // any app-level Esc handler (none expected, but be conservative)
+            // still sees it.
+            return VimDecision(intent: .passThrough)
+        case .help:
+            return setMode(.normal(prefix: .none), intent: .dismissOverlay)
+        case .disabled, .find, .hint, .vomnibar:
             return VimDecision(intent: .passThrough)
         }
     }
@@ -189,7 +246,7 @@ struct VimStateMachine {
 
     private mutating func decideNormal(
         prefix: CommandPrefix,
-        keyCode: CGKeyCode,
+        keyCode _: CGKeyCode,
         characters: String?
     ) -> VimDecision {
         guard let chars = characters, !chars.isEmpty else {
@@ -204,7 +261,7 @@ struct VimStateMachine {
         case .g(let count):
             return decideAfterG(count: count, chars: chars)
         case .y:
-            // Y-prefix not enterable at V-M1; if somehow set, cancel and
+            // Y-prefix not enterable at V-M2; if somehow set, cancel and
             // re-evaluate the keystroke from `.normal(.none)`.
             _ = setMode(.normal(prefix: .none), intent: .passThrough)
             return decideNormalNoPrefix(chars: chars)
@@ -245,37 +302,53 @@ struct VimStateMachine {
             return setMode(.normal(prefix: .none), intent: .passThrough)
         }
 
-        let intent = intentFor(command: command, count: count ?? 1)
-        return setMode(.normal(prefix: .none), intent: intent)
+        return resolveCommand(command, count: count ?? 1, fromPrefix: true)
     }
 
-    /// Resolve a single-character chord against the bindings table. If the
-    /// command exists but is not yet behavioral at V-M1, returns
-    /// `.passThrough` (forward-compat — character is not silently consumed
-    /// just because a future milestone will bind it).
+    /// Resolve a single-character chord against the bindings table. Mode-
+    /// affecting commands (`enterInsert`, `help`) mutate state inline; the
+    /// rest go through `intentFor` for a pure mapping.
     private mutating func dispatchSingleChar(chars: String, count: Int) -> VimDecision {
         guard let command = settings.bindings.singleChar[chars] else {
             // Truly unbound: pass through and reset prefix if any.
-            if case .normal(let prefix) = mode, prefix != .none {
+            if currentPrefixIsNonEmpty() {
                 return setMode(.normal(prefix: .none), intent: .passThrough)
             }
             return VimDecision(intent: .passThrough)
         }
 
-        let intent = intentFor(command: command, count: count)
-        let modeChange = currentPrefixIsNonEmpty()
-        if modeChange {
-            return setMode(.normal(prefix: .none), intent: intent)
+        return resolveCommand(command, count: count, fromPrefix: currentPrefixIsNonEmpty())
+    }
+
+    /// Resolves a `VimCommand` to a `VimDecision`. Handles mode-affecting
+    /// commands (`enterInsert`, `help`) inline; everything else is a pure
+    /// `intentFor` lookup with the prefix reset if needed.
+    private mutating func resolveCommand(
+        _ command: VimCommand,
+        count: Int,
+        fromPrefix: Bool
+    ) -> VimDecision {
+        switch command {
+        case .enterInsert:
+            return setMode(.insert, intent: .consume)
+        case .help:
+            return setMode(.help, intent: .showOverlay(.help))
+        default:
+            let intent = intentFor(command: command, count: count)
+            if fromPrefix {
+                return setMode(.normal(prefix: .none), intent: intent)
+            }
+            return VimDecision(intent: intent)
         }
-        return VimDecision(intent: intent)
     }
 
     // MARK: - Command → intent
 
-    /// Maps a `VimCommand` to a `VimIntent` given a repeat count. V-M1 only
-    /// resolves scroll-family commands to non-passThrough intents; every
-    /// other command exists in the enum but produces `.passThrough` here
-    /// until its owning milestone wires behavior.
+    /// Maps a `VimCommand` to a `VimIntent` given a repeat count. V-M2
+    /// resolves scroll-family + key-pass-through commands. Mode-affecting
+    /// commands (`enterInsert`, `help`) are handled separately by
+    /// `resolveCommand` because they need to mutate `mode`. Everything
+    /// not yet wired (V-M3 hints, V-M4 vomnibar) is `.passThrough`.
     private func intentFor(command: VimCommand, count: Int) -> VimIntent {
         let n = max(1, count)
         switch command {
@@ -295,14 +368,36 @@ struct VimStateMachine {
             return .scrollToEdge(.top)
         case .bottom:
             return .scrollToEdge(.bottom)
-        case .find, .findNext, .findPrev, .historyBack, .historyForward,
-             .reload, .hardReload, .enterInsert, .escape, .help, .suspendChord,
-             .hint, .hintNewTab, .focusInput, .viewSource,
+
+        // V-M2 key-pass-through bindings: synthesize Safari's native
+        // shortcut so this app stays a thin remap layer rather than
+        // re-implementing find / history / reload.
+        case .find:
+            return .postKey(virtualKey: VimKeyCode.f, flags: .maskCommand)
+        case .findNext:
+            return .postKey(virtualKey: VimKeyCode.g, flags: .maskCommand)
+        case .findPrev:
+            return .postKey(virtualKey: VimKeyCode.g, flags: [.maskCommand, .maskShift])
+        case .historyBack:
+            return .postKey(virtualKey: VimKeyCode.leftBracket, flags: .maskCommand)
+        case .historyForward:
+            return .postKey(virtualKey: VimKeyCode.rightBracket, flags: .maskCommand)
+        case .reload:
+            return .postKey(virtualKey: VimKeyCode.r, flags: .maskCommand)
+        case .hardReload:
+            return .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskShift])
+
+        // Mode-affecting commands handled by `resolveCommand`; never
+        // reach here.
+        case .enterInsert, .escape, .help:
+            return .consume
+
+        case .suspendChord, .hint, .hintNewTab, .focusInput, .viewSource,
              .copyURL, .copyHintURL,
              .vomnibarURL, .vomnibarURLNewTab,
              .vomnibarBookmarks, .vomnibarBookmarksNewTab, .vomnibarTabs,
              .openClipboard, .openClipboardNewTab:
-            // Defined for forward-compat; behavior arrives in V-M2..V-M5.
+            // Defined for forward-compat; behavior arrives in V-M3..V-M5.
             return .passThrough
         }
     }

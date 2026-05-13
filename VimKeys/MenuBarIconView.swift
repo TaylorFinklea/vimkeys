@@ -1,10 +1,10 @@
+import AppKit
 import SwiftUI
 
-/// Menu-bar icon: stylized lowercase "v" inside a keycap silhouette,
-/// tinted by `Variant`. V-M1 reaches five variants — `off`, `normal`,
-/// `denied`, `listenOnly`, `tapError` — plus a corner badge for "update
-/// available". Insert / disabled-by-site / suspended visuals arrive in
-/// V-M2 and V-M5; defining them now would ship unused art.
+/// Menu-bar icon: stylized lowercase "v" inside a keycap silhouette.
+/// V-M1 reaches five variants — `off`, `normal`, `denied`, `listenOnly`,
+/// `tapError` — plus a corner badge for "update available". V-M2 adds
+/// `insert`. Disabled-by-site / suspended visuals arrive in V-M5.
 struct MenuBarIconView: View {
     enum Variant: Equatable {
         case off
@@ -14,11 +14,26 @@ struct MenuBarIconView: View {
         case listenOnly
         case tapError
 
-        var tint: Color {
+        /// Color drawn into the rendered NSImage. For template-rendered
+        /// variants AppKit replaces the color with the menu-bar text color,
+        /// so the value here only needs to be opaque. Colored variants
+        /// (denied / tapError) opt out of template rendering and keep
+        /// their pixel color.
+        var drawColor: Color {
             switch self {
             case .denied:   return .orange
             case .tapError: return .red
-            default:        return .primary
+            default:        return .black
+            }
+        }
+
+        /// Monochrome variants render as template images so macOS auto-tints
+        /// them for the current menu-bar appearance. Colored variants opt
+        /// out so orange / red survive into the rendered image.
+        var usesTemplateRendering: Bool {
+            switch self {
+            case .denied, .tapError: return false
+            default:                 return true
             }
         }
 
@@ -34,6 +49,10 @@ struct MenuBarIconView: View {
         }
     }
 
+    /// Rendered point size of the menu-bar image. Matches the frame
+    /// `VimKeysApp` applies to the `MenuBarExtra` label.
+    private static let pointSize: CGFloat = 18
+
     /// Native viewBox the SVG paths are authored in. All draw calls happen
     /// in this 24-unit space and the Canvas scales to the actual size.
     private static let viewBox: CGFloat = 24
@@ -42,6 +61,34 @@ struct MenuBarIconView: View {
     let updateBadge: Bool
 
     var body: some View {
+        Image(nsImage: renderedImage())
+            .interpolation(.high)
+            .accessibilityLabel(variant.accessibilityLabel)
+    }
+
+    /// Renders the icon into an NSImage. Template flag is set per variant so
+    /// AppKit auto-tints monochrome variants to the menu-bar text color
+    /// (white on dark menu bar, black on light) while preserving pixel
+    /// color for orange / red signal states.
+    @MainActor
+    private func renderedImage() -> NSImage {
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        let renderer = ImageRenderer(content: drawing)
+        renderer.scale = scale
+
+        let pointSize = NSSize(width: Self.pointSize, height: Self.pointSize)
+        let image = renderer.nsImage ?? NSImage(size: pointSize)
+        image.size = pointSize
+        image.isTemplate = variant.usesTemplateRendering
+        return image
+    }
+
+    /// SwiftUI content that ImageRenderer rasterizes. Same Canvas drawing
+    /// the previous body used, but addressed by `variant.drawColor` instead
+    /// of `.primary` (which resolved to a transparent / context-dependent
+    /// color inside MenuBarExtra's label and caused the icon to render as
+    /// invisible).
+    private var drawing: some View {
         Canvas { ctx, size in
             let scale = min(size.width, size.height) / Self.viewBox
             ctx.scaleBy(x: scale, y: scale)
@@ -50,28 +97,30 @@ struct MenuBarIconView: View {
             drawInnerContent(in: &ctx)
             if updateBadge { drawUpdateBadge(in: &ctx) }
         }
-        .foregroundStyle(variant.tint)
-        .accessibilityLabel(variant.accessibilityLabel)
+        .frame(width: Self.pointSize, height: Self.pointSize)
     }
 
     private func drawCapShell(in ctx: inout GraphicsContext) {
+        let color = GraphicsContext.Shading.color(variant.drawColor)
         let cap = Path(roundedRect: CGRect(x: 3, y: 5, width: 18, height: 14),
                        cornerSize: CGSize(width: 2.5, height: 2.5))
-        ctx.stroke(cap, with: .color(variant.tint), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+        ctx.stroke(cap, with: color, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
         let shelf = Path { p in
             p.move(to: CGPoint(x: 3, y: 11))
             p.addLine(to: CGPoint(x: 21, y: 11))
         }
-        ctx.stroke(shelf, with: .color(variant.tint), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+        ctx.stroke(shelf, with: color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
     }
 
     private func drawInnerContent(in ctx: inout GraphicsContext) {
+        let color = GraphicsContext.Shading.color(variant.drawColor)
+
         switch variant {
         case .off:
             // Single dim dot — Safari isn't frontmost.
             let dot = Path(ellipseIn: CGRect(x: 12 - 0.6, y: 15 - 0.6, width: 1.2, height: 1.2))
-            ctx.fill(dot, with: .color(variant.tint.opacity(0.55)))
+            ctx.fill(dot, with: color)
 
         case .normal:
             // Lowercase "v" glyph filling the lower face: two strokes
@@ -82,33 +131,35 @@ struct MenuBarIconView: View {
                 p.addLine(to: CGPoint(x: 12.0, y: 17.8))
                 p.addLine(to: CGPoint(x: 15.0, y: 12.5))
             }
-            ctx.stroke(v, with: .color(variant.tint), style: stroke)
+            ctx.stroke(v, with: color, style: stroke)
 
         case .insert:
-            // Same v glyph, plus a small "I" in the lower-left corner so
-            // the user knows VimKeys has stepped aside for typing.
+            // Same v glyph (dimmed), plus a small "I" in the lower-left
+            // corner so the user knows VimKeys has stepped aside for
+            // typing. Template rendering recolors both shapes together,
+            // so the visual contrast comes from the I's smaller stroke.
             let stroke = StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round)
             let v = Path { p in
                 p.move(to: CGPoint(x: 10.0, y: 13.0))
                 p.addLine(to: CGPoint(x: 12.5, y: 17.5))
                 p.addLine(to: CGPoint(x: 15.0, y: 13.0))
             }
-            ctx.stroke(v, with: .color(variant.tint.opacity(0.55)), style: stroke)
+            ctx.stroke(v, with: color, style: stroke)
             let iStroke = StrokeStyle(lineWidth: 1.4, lineCap: .round)
             let iBadge = Path { p in
                 p.move(to: CGPoint(x: 5.5, y: 13.5)); p.addLine(to: CGPoint(x: 7.5, y: 13.5))
                 p.move(to: CGPoint(x: 6.5, y: 13.5)); p.addLine(to: CGPoint(x: 6.5, y: 17.0))
                 p.move(to: CGPoint(x: 5.5, y: 17.0)); p.addLine(to: CGPoint(x: 7.5, y: 17.0))
             }
-            ctx.stroke(iBadge, with: .color(variant.tint), style: iStroke)
+            ctx.stroke(iBadge, with: color, style: iStroke)
 
         case .denied:
-            // Diagonal slash from (5,6) to (19,18) — denied.
+            // Diagonal slash — denied.
             let slash = Path { p in
                 p.move(to: CGPoint(x: 5, y: 6))
                 p.addLine(to: CGPoint(x: 19, y: 18))
             }
-            ctx.stroke(slash, with: .color(variant.tint), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+            ctx.stroke(slash, with: color, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
 
         case .listenOnly:
             // Six dash segments suggesting partial / passive — same pattern
@@ -123,7 +174,7 @@ struct MenuBarIconView: View {
                     }
                 }
             }
-            ctx.stroke(segments, with: .color(variant.tint), style: dashStroke)
+            ctx.stroke(segments, with: color, style: dashStroke)
 
         case .tapError:
             // ✕ — event tap died.
@@ -131,22 +182,29 @@ struct MenuBarIconView: View {
                 p.move(to: CGPoint(x: 9,  y: 13.5)); p.addLine(to: CGPoint(x: 15, y: 17.5))
                 p.move(to: CGPoint(x: 15, y: 13.5)); p.addLine(to: CGPoint(x: 9,  y: 17.5))
             }
-            ctx.stroke(cross, with: .color(variant.tint), style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+            ctx.stroke(cross, with: color, style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
         }
     }
 
     private func drawUpdateBadge(in ctx: inout GraphicsContext) {
+        let color = GraphicsContext.Shading.color(variant.drawColor)
         let disc = Path(ellipseIn: CGRect(x: 17, y: 3, width: 6, height: 6))
-        ctx.fill(disc, with: .color(variant.tint))
+        ctx.fill(disc, with: color)
 
-        let arrow = Path { p in
-            p.move(to: CGPoint(x: 20,   y: 4.6))
-            p.addLine(to: CGPoint(x: 20, y: 7.4))
-            p.move(to: CGPoint(x: 18.7, y: 6.2))
-            p.addLine(to: CGPoint(x: 20, y: 7.5))
-            p.addLine(to: CGPoint(x: 21.3, y: 6.2))
+        // Punch the arrow out of the disc using `.destinationOut` blend mode
+        // so a separate overlay color isn't needed; works for both template
+        // and non-template renders.
+        ctx.drawLayer { layer in
+            layer.blendMode = .destinationOut
+            let arrow = Path { p in
+                p.move(to: CGPoint(x: 20,   y: 4.6))
+                p.addLine(to: CGPoint(x: 20, y: 7.4))
+                p.move(to: CGPoint(x: 18.7, y: 6.2))
+                p.addLine(to: CGPoint(x: 20, y: 7.5))
+                p.addLine(to: CGPoint(x: 21.3, y: 6.2))
+            }
+            layer.stroke(arrow, with: .color(.black), style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round))
         }
-        ctx.stroke(arrow, with: .color(.white), style: StrokeStyle(lineWidth: 0.9, lineCap: .round, lineJoin: .round))
     }
 }
 

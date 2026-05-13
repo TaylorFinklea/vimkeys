@@ -234,7 +234,14 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         }
 
         let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        let characters = NSEvent(cgEvent: event)?.charactersIgnoringModifiers
+        // Resolve characters via a thread-safe US-QWERTY lookup. The
+        // previous `NSEvent(cgEvent:).charactersIgnoringModifiers` call
+        // went through HIToolbox's TextInputSources, which on macOS 26
+        // asserts main-thread and SIGTRAPs the engine thread.
+        let characters = USKeyboardLayout.characters(
+            forKeyCode: keyCode,
+            shifted: event.flags.contains(.maskShift)
+        )
 
         stateMachineLock.lock()
         let decision = stateMachine.decide(

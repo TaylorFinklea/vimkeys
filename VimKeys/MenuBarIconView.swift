@@ -125,8 +125,8 @@ struct MenuBarIconView: View {
             // so this reads as a quieter version of the same brand mark.
             ctx.stroke(
                 chevronPath(),
-                with: .color(base.opacity(0.4)),
-                style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
+                with: .color(base.opacity(0.45)),
+                style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round)
             )
 
         case .normal:
@@ -134,7 +134,7 @@ struct MenuBarIconView: View {
             ctx.stroke(
                 chevronPath(),
                 with: .color(base),
-                style: StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round)
+                style: StrokeStyle(lineWidth: 3.8, lineCap: .round, lineJoin: .round)
             )
 
         case .insert:
@@ -160,19 +160,19 @@ struct MenuBarIconView: View {
             ctx.stroke(
                 chevronPath(),
                 with: .color(base),
-                style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round)
+                style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round)
             )
             let slash = Path { p in
                 p.move(to: CGPoint(x: 4.5, y: 4.5))
                 p.addLine(to: CGPoint(x: 19.5, y: 19.5))
             }
-            ctx.stroke(slash, with: .color(base), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+            ctx.stroke(slash, with: .color(base), style: StrokeStyle(lineWidth: 3.0, lineCap: .round))
 
         case .listenOnly:
             // Chevron rendered as three dash segments per leg — visually
             // "partial / passive listening". Same brand silhouette but
             // interrupted strokes signal degraded function.
-            let stroke = StrokeStyle(lineWidth: 1.9, lineCap: .round)
+            let stroke = StrokeStyle(lineWidth: 2.4, lineCap: .round)
             let segments = Path { p in
                 // Left leg: (5,6.5) → (12,18.5)
                 p.move(to: CGPoint(x: 5.7, y: 7.7)); p.addLine(to: CGPoint(x: 7.3, y: 10.4))
@@ -189,7 +189,7 @@ struct MenuBarIconView: View {
                 p.move(to: CGPoint(x: 6.5, y: 7.5)); p.addLine(to: CGPoint(x: 17.5, y: 17.5))
                 p.move(to: CGPoint(x: 17.5, y: 7.5)); p.addLine(to: CGPoint(x: 6.5, y: 17.5))
             }
-            ctx.stroke(cross, with: .color(base), style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
+            ctx.stroke(cross, with: .color(base), style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round))
         }
     }
 

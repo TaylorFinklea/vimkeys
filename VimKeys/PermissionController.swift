@@ -56,19 +56,63 @@ enum PermissionController {
 
     @discardableResult
     static func requestListenAccess() -> Bool {
-        let listenGranted = CGRequestListenEventAccess()
-        _ = CGRequestPostEventAccess()
-        return listenGranted
+        CGRequestListenEventAccess()
+    }
+
+    @discardableResult
+    static func requestPostAccess() -> Bool {
+        CGRequestPostEventAccess()
+    }
+
+    /// Triggers the standard Accessibility prompt with the
+    /// `AXTrustedCheckOptionPrompt` option. This is the documented path
+    /// for registering an app in the Accessibility TCC list and is more
+    /// reliable than `CGRequestPostEventAccess` at populating the list
+    /// after a prior denial.
+    @discardableResult
+    static func requestAccessibilityWithPrompt() -> Bool {
+        // Literal matches `kAXTrustedCheckOptionPrompt` — the constant
+        // isn't Sendable under Swift 6 strict concurrency, and the docs
+        // explicitly allow the string form here.
+        let options: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
+        return AXIsProcessTrustedWithOptions(options)
+    }
+
+    /// Forces TCC to register VimKeys in the Input Monitoring list by
+    /// attempting to create a listen-only session event tap. When
+    /// permission is denied the tap creation returns nil — the side
+    /// effect is the TCC daemon noticing our bundle and adding it to
+    /// the visible list. `CGRequestListenEventAccess` alone has been
+    /// observed to silently fail to populate the list, particularly
+    /// after a previous denial or removal.
+    static func probeInputMonitoringRegistration() {
+        let mask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
+        let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: { _, _, event, _ in Unmanaged.passUnretained(event) },
+            userInfo: nil
+        )
+        guard let tap else { return }
+        // Tap creation succeeded — permission is already granted. Tear
+        // it down immediately so the real EventTapEngine owns the tap.
+        CGEvent.tapEnable(tap: tap, enable: false)
+    }
+
+    static var hasListenEventAccess: Bool {
+        CGPreflightListenEventAccess()
     }
 
     static var hasPostEventAccess: Bool {
         CGPreflightPostEventAccess()
     }
 
-    /// AX-tree trust check, separate from event posting. V-M2 starts using
-    /// this to read focused-element role for insert-mode auto-detect; V-M3
-    /// uses it for link-hint traversal of `AXWebArea`. Calling with `nil`
-    /// is non-prompting; the prompting form lands in V-M6 onboarding.
+    /// AX-tree trust check, separate from event posting. V-M2 uses this to
+    /// read focused-element role for insert-mode auto-detect; V-M3 uses it
+    /// for link-hint traversal of `AXWebArea`. Calling with `nil` is
+    /// non-prompting — use `requestAccessibilityWithPrompt()` to prompt.
     static var hasAccessibilityTrust: Bool {
         AXIsProcessTrustedWithOptions(nil)
     }

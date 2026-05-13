@@ -20,6 +20,11 @@ struct SettingsView: View {
                     Label("Sites", systemImage: "globe")
                 }
 
+            permissionsView
+                .tabItem {
+                    Label("Permissions", systemImage: "lock.shield")
+                }
+
             aboutView
                 .tabItem {
                     Label("About", systemImage: "info.circle")
@@ -27,6 +32,73 @@ struct SettingsView: View {
         }
         .padding()
         .frame(minWidth: 520, minHeight: 380)
+    }
+
+    private var permissionsView: some View {
+        let inputGranted = model.permissionState != .denied
+        let accessibilityGranted = model.accessibilityGranted
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Permissions")
+                .font(.title2.weight(.semibold))
+
+            Text("VimKeys needs Input Monitoring to read vim-style keys while Safari is frontmost. Accessibility is required to post scroll events, switch into insert mode on text inputs, and read link targets for hint mode (V-M3).")
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                permissionRow(
+                    title: "Input Monitoring",
+                    granted: inputGranted,
+                    action: { model.requestInputMonitoring() }
+                )
+
+                permissionRow(
+                    title: "Accessibility",
+                    granted: accessibilityGranted,
+                    action: { model.requestAccessibility() }
+                )
+            }
+
+            if !(inputGranted && accessibilityGranted) {
+                Text("After granting access in System Settings, restart VimKeys so the global event tap picks up the new permissions.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Button("Restart VimKeys") {
+                    model.relaunch()
+                }
+            }
+
+            if let lastError = model.lastError {
+                Text(lastError)
+                    .foregroundStyle(.red)
+            }
+
+            Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func permissionRow(
+        title: String,
+        granted: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 12) {
+            Label(
+                title,
+                systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(granted ? .green : .orange)
+
+            Spacer()
+
+            if !granted {
+                Button("Enable \(title)") {
+                    action()
+                }
+            }
+        }
     }
 
     private var generalView: some View {

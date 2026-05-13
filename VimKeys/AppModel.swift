@@ -6,11 +6,20 @@ import Foundation
 final class AppModel: ObservableObject {
     @Published var mode: VimMode = .disabled
     @Published var permissionState: PermissionState
+    @Published var accessibilityGranted: Bool
     @Published var settings: VimSettings
     @Published var lastError: String?
     @Published private(set) var launchAtLoginEnabled: Bool
     @Published private(set) var tapErrorActive: Bool = false
     @Published private(set) var updateAvailable: Bool = false
+
+    /// True only when both Input Monitoring and Accessibility are granted.
+    /// The status-menu permission rows hide themselves on this condition —
+    /// once everything is wired up the user shouldn't have to see green
+    /// checkmarks in the menu every time they open it.
+    var allPermissionsGranted: Bool {
+        permissionState != .denied && accessibilityGranted
+    }
 
     private let settingsStore: SettingsStore
     private let eventTapService: EventTapService
@@ -33,6 +42,7 @@ final class AppModel: ObservableObject {
         let loadedSettings = settingsStore.load()
         self.settings = loadedSettings
         permissionState = PermissionController.currentState()
+        accessibilityGranted = PermissionController.hasPostEventAccess
 
         let service = eventTapService ?? EventTapService(settings: loadedSettings)
         self.eventTapService = service
@@ -161,16 +171,85 @@ final class AppModel: ObservableObject {
         eventTapService.updateSettings(settings)
     }
 
+    /// Backwards-compatible entry point — requests both permissions. Kept
+    /// for any caller that still wants a single nudge; new UI uses the
+    /// per-permission methods below so each row has its own button.
     func requestPermission() {
+        requestInputMonitoring()
+        requestAccessibility()
+    }
+
+    func requestInputMonitoring() {
+        // `CGRequestListenEventAccess` is the documented entry point, but
+        // empirically it doesn't always populate the Input Monitoring list
+        // after a prior denial. Combining the request with a real
+        // `CGEvent.tapCreate` attempt forces TCC to notice us — the tap
+        // fails to instantiate when permission is missing, and that
+        // failure is what triggers the daemon to add VimKeys to the
+        // visible list.
         let granted = PermissionController.requestListenAccess()
+        PermissionController.probeInputMonitoringRegistration()
         refreshPermissionState()
         if granted {
             restartEventTap()
+            return
         }
+        openSettings(url: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+    }
+
+    func requestAccessibility() {
+        // `AXIsProcessTrustedWithOptions` with the prompt option is the
+        // standard mechanism for registering an app in the Accessibility
+        // TCC list and reliably populates the list even after a prior
+        // denial — more so than `CGRequestPostEventAccess`. We still
+        // call the CG variant as a belt-and-braces measure.
+        let granted = PermissionController.requestAccessibilityWithPrompt()
+            || PermissionController.requestPostAccess()
+        refreshPermissionState()
+        if granted {
+            restartEventTap()
+            return
+        }
+        openSettings(url: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+    }
+
+    private func openSettings(url: String) {
+        // TCC's auto-add happens via XPC after the request returns, so
+        // we wait briefly before opening Settings — otherwise the pane
+        // is painted before VimKeys has been added to the list and the
+        // user sees an empty entry. 500 ms is enough in practice and
+        // short enough to feel responsive.
+        guard let url = URL(string: url) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Relaunches VimKeys. The kernel binds an event tap's permission
+    /// snapshot at creation time and won't upgrade it even after TCC says
+    /// yes, so granting Input Monitoring or Accessibility to a running
+    /// instance still produces a dead tap. A fresh process is the only
+    /// reliable way to pick the new permissions up.
+    func relaunch() {
+        let bundlePath = Bundle.main.bundlePath
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        // Brief delay so the current process is fully gone before `open`
+        // looks for a duplicate; otherwise LaunchServices reuses the
+        // dying instance and silently no-ops.
+        task.arguments = ["-c", "sleep 0.4 && /usr/bin/open \"\(bundlePath)\""]
+        do {
+            try task.run()
+        } catch {
+            lastError = "Couldn't relaunch VimKeys: \(error.localizedDescription)"
+            return
+        }
+        NSApp.terminate(nil)
     }
 
     func refreshPermissionState() {
         permissionState = PermissionController.currentState()
+        accessibilityGranted = PermissionController.hasPostEventAccess
     }
 
     func restartEventTap() {

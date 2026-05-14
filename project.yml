@@ -27,6 +27,18 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: VimKeys/Info.plist
         CODE_SIGN_STYLE: Automatic
+      configs:
+        # Release builds sign with the stable Developer ID Application cert
+        # so TCC's designated-requirement check passes across rebuilds.
+        # Without this, every xcodebuild produces a fresh adhoc cdhash and
+        # Input Monitoring / Accessibility grants reset on each install.
+        # V-M6 layers notarization on top; the signing identity itself does
+        # not change between local dev and the released artifact.
+        Release:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: K7CBQW6MPG
+          OTHER_CODE_SIGN_FLAGS: "--timestamp=none"
     info:
       path: VimKeys/Info.plist
       properties:

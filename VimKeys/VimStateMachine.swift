@@ -7,6 +7,11 @@ import Foundation
 /// V-M3 / V-M4 wiring without renaming the public surface.
 enum VimMode: Equatable {
     case disabled
+    /// Safari is frontmost but the current page's host is in the user's
+    /// disabled-sites list. Behaves like `.disabled` (every key passes
+    /// through) but is visible to the menu bar so we can surface "Off on
+    /// this site" rather than "Off".
+    case disabledBySite
     case insert
     case normal(prefix: CommandPrefix)
     case find(buffer: String)
@@ -136,7 +141,15 @@ struct VimDecision: Equatable {
 /// without ever touching `CGEventTap`.
 struct VimStateMachine {
     private(set) var mode: VimMode = .disabled
-    var settings: VimSettings
+    private(set) var currentURL: URL?
+    var settings: VimSettings {
+        didSet {
+            // Re-evaluate disabled-by-site state when the user edits the
+            // sites list while VimKeys is running. Without this, adding a
+            // host wouldn't take effect until the next URL change.
+            reconcileDisabledBySite(safariFrontmost: !isModeOff)
+        }
+    }
 
     /// Lines per single press of `j` / `k` / `h` / `l`. Multiplied by repeat
     /// count when one is buffered.
@@ -161,11 +174,51 @@ struct VimStateMachine {
     @discardableResult
     mutating func updateSafariFrontmost(_ isFrontmost: Bool) -> VimDecision? {
         if isFrontmost {
-            guard case .disabled = mode else { return nil }
+            guard isModeOff else { return nil }
+            if isCurrentHostDisabled {
+                return setMode(.disabledBySite, intent: .passThrough)
+            }
             return setMode(.normal(prefix: .none), intent: .passThrough)
         } else {
-            guard mode != .disabled else { return nil }
+            guard !isModeOff else { return nil }
             return setMode(.disabled, intent: .passThrough)
+        }
+    }
+
+    /// Called by AppModel when Safari's frontmost URL changes (via polling
+    /// `SafariBridge.currentURL()`). Triggers a mode transition iff the
+    /// host's disabled-state flips.
+    @discardableResult
+    mutating func updateCurrentURL(_ url: URL?) -> VimDecision? {
+        currentURL = url
+        return reconcileDisabledBySite(safariFrontmost: !isModeOff || mode == .disabledBySite)
+    }
+
+    @discardableResult
+    private mutating func reconcileDisabledBySite(safariFrontmost: Bool) -> VimDecision? {
+        guard safariFrontmost else { return nil }
+        let disabled = isCurrentHostDisabled
+        switch mode {
+        case .disabled:
+            return nil  // Safari not frontmost; ignore.
+        case .disabledBySite where !disabled:
+            return setMode(.normal(prefix: .none), intent: .passThrough)
+        case .normal where disabled:
+            return setMode(.disabledBySite, intent: .passThrough)
+        default:
+            return nil
+        }
+    }
+
+    private var isCurrentHostDisabled: Bool {
+        guard let url = currentURL else { return false }
+        return SitesStore.isDisabled(url: url, in: settings.disabledHosts)
+    }
+
+    private var isModeOff: Bool {
+        switch mode {
+        case .disabled, .disabledBySite: return true
+        default: return false
         }
     }
 
@@ -227,8 +280,12 @@ struct VimStateMachine {
             return VimDecision(intent: .passThrough)
         }
 
-        // Disabled: pass through everything (incl. Esc).
+        // Disabled (Safari not frontmost) or disabled-by-site: pass
+        // through everything (incl. Esc).
         if case .disabled = mode {
+            return VimDecision(intent: .passThrough)
+        }
+        if case .disabledBySite = mode {
             return VimDecision(intent: .passThrough)
         }
 
@@ -263,7 +320,7 @@ struct VimStateMachine {
             return decideHint(characters: characters)
         case .vomnibar:
             return decideVomnibar(keyCode: keyCode, characters: characters)
-        case .disabled, .insert, .find, .help:
+        case .disabled, .disabledBySite, .insert, .find, .help:
             // Disabled / insert / help are handled above; .find arrives
             // in V-M5 (it's currently a postKey to Cmd+F).
             return VimDecision(intent: .passThrough)
@@ -317,7 +374,7 @@ struct VimStateMachine {
             return setMode(.normal(prefix: .none), intent: .dismissOverlay)
         case .vomnibar:
             return setMode(.normal(prefix: .none), intent: .dismissOverlay)
-        case .disabled, .find:
+        case .disabled, .disabledBySite, .find:
             return VimDecision(intent: .passThrough)
         }
     }

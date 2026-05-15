@@ -227,13 +227,12 @@ func resolveMenuBarVariant(
     if perm == .denied { return (.denied, false) }
     if perm == .listenOnly { return (.listenOnly, updateAvailable) }
     switch mode {
-    case .disabled:
+    case .disabled, .disabledBySite:
         return (.off, updateAvailable)
     case .insert:
         return (.insert, updateAvailable)
     case .normal, .find, .hint, .vomnibar, .help:
-        // .help is transient; treat as normal for icon. Disabled-by-site
-        // and suspended visuals arrive in V-M5.
+        // .help is transient; treat as normal for icon.
         return (.normal, updateAvailable)
     }
 }
@@ -242,13 +241,14 @@ func resolveMenuBarVariant(
 extension VimMode {
     var menuTitle: String {
         switch self {
-        case .disabled: return "Off"
-        case .normal:   return "Normal"
-        case .insert:   return "Insert"
-        case .find:     return "Find"
-        case .hint:     return "Hint"
-        case .vomnibar: return "Vomnibar"
-        case .help:     return "Help"
+        case .disabled:      return "Off"
+        case .disabledBySite: return "Off (this site)"
+        case .normal:        return "Normal"
+        case .insert:        return "Insert"
+        case .find:          return "Find"
+        case .hint:          return "Hint"
+        case .vomnibar:      return "Vomnibar"
+        case .help:          return "Help"
         }
     }
 }

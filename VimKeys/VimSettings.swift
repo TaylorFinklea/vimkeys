@@ -7,15 +7,20 @@ struct VimSettings: Equatable {
     /// Characters used to label hints in `f`/`F` mode. Empty string falls
     /// back to `LinkHintEngine.defaultAlphabet` at session start.
     var hintAlphabet: String
+    /// Hosts (suffix-matched) on which VimKeys passes every key through
+    /// to Safari. Editable in Settings → Sites.
+    var disabledHosts: [String]
 
     init(
         bindings: VimBindings = .v1Default,
         insertModeBehavior: InsertModeBehavior = .autoDetect,
-        hintAlphabet: String = LinkHintEngine.defaultAlphabet
+        hintAlphabet: String = LinkHintEngine.defaultAlphabet,
+        disabledHosts: [String] = []
     ) {
         self.bindings = bindings
         self.insertModeBehavior = insertModeBehavior
         self.hintAlphabet = hintAlphabet
+        self.disabledHosts = disabledHosts
     }
 
     static let v1Default = VimSettings()

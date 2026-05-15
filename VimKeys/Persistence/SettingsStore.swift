@@ -30,16 +30,19 @@ struct SettingsStore {
            !alphabet.isEmpty {
             settings.hintAlphabet = alphabet
         }
+        settings.disabledHosts = SitesStore().load()
         return settings
     }
 
     func save(_ settings: VimSettings) {
         defaults.set(settings.insertModeBehavior.rawValue, forKey: Key.insertModeBehavior)
         defaults.set(settings.hintAlphabet, forKey: Key.hintAlphabet)
+        SitesStore().save(settings.disabledHosts)
     }
 
     func reset() {
         defaults.removeObject(forKey: Key.insertModeBehavior)
         defaults.removeObject(forKey: Key.hintAlphabet)
+        SitesStore().reset()
     }
 }

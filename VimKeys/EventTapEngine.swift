@@ -91,6 +91,26 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         perform(#selector(updateFocusEditableOnThread(_:)), on: thread, with: flag, waitUntilDone: false)
     }
 
+    /// Tells the state machine the current Safari URL so it can disable
+    /// itself per-site. Safe to call from any thread; debounced by the
+    /// AppModel poll loop.
+    func updateCurrentURL(_ url: URL?) {
+        guard let thread else { return }
+        let carrier = URLBox(value: url)
+        perform(#selector(updateCurrentURLOnThread(_:)), on: thread, with: carrier, waitUntilDone: false)
+    }
+
+    @objc
+    private func updateCurrentURLOnThread(_ carrier: URLBox) {
+        stateMachineLock.lock()
+        let decision = stateMachine.updateCurrentURL(carrier.value)
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+        if decision != nil {
+            onModeChange(mode)
+        }
+    }
+
     /// Called by `LinkHintCoordinator` after a hint session ends (clicked,
     /// copied, or cancelled). Steps the state machine back to `.normal`.
     /// Safe to call from any thread; hops to the engine thread.
@@ -530,6 +550,14 @@ final class TapLivenessProbe: NSObject {
 final class BoolBox: NSObject {
     let value: Bool
     init(value: Bool) {
+        self.value = value
+    }
+}
+
+/// Same idea for `URL?`.
+final class URLBox: NSObject {
+    let value: URL?
+    init(value: URL?) {
         self.value = value
     }
 }

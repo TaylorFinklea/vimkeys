@@ -209,23 +209,14 @@ struct SettingsView: View {
     }
 
     private var sitesPlaceholderView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Sites")
-                .font(.title2.weight(.semibold))
-
-            Text("Coming in v0.5")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-
-            Text("Per-domain disable rules let you silence VimKeys on sites that already have rich keyboard navigation (Gmail, Notion, etc.). Lands in V-M5.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Spacer()
-        }
+        SitesView(model: model)
     }
 
     private var aboutView: some View {
+        aboutViewContent
+    }
+
+    private var aboutViewContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 16) {
                 Image(systemName: "keyboard")
@@ -270,5 +261,63 @@ struct SettingsView: View {
 
             Spacer()
         }
+    }
+}
+
+/// Sites tab. Editable list of disabled hosts plus a one-click "disable
+/// current site" button (uses `AppModel.disableCurrentHost()` which reads
+/// the polled Safari URL).
+private struct SitesView: View {
+    @ObservedObject var model: AppModel
+    @State private var newEntry: String = ""
+    @FocusState private var newEntryFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Sites")
+                .font(.title2.weight(.semibold))
+
+            Text("VimKeys passes every keystroke straight through to Safari when the page's host matches one of these entries. Suffix-matched, case-insensitive (\u{0060}gmail.com\u{0060} also covers \u{0060}mail.gmail.com\u{0060}).")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                TextField("example.com", text: $newEntry)
+                    .focused($newEntryFocused)
+                    .onSubmit(addEntry)
+                Button("Add") { addEntry() }
+                    .disabled(newEntry.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("Disable current site") {
+                    model.disableCurrentHost()
+                }
+            }
+
+            List {
+                ForEach(Array(model.settings.disabledHosts.enumerated()), id: \.offset) { index, host in
+                    HStack {
+                        Text(host)
+                            .font(.system(.body, design: .monospaced))
+                        Spacer()
+                        Button(role: .destructive) {
+                            model.removeDisabledHost(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+            .frame(minHeight: 160)
+
+            Spacer()
+        }
+    }
+
+    private func addEntry() {
+        let trimmed = newEntry.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        model.addDisabledHost(trimmed)
+        newEntry = ""
+        newEntryFocused = true
     }
 }

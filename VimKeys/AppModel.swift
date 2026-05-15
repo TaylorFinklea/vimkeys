@@ -31,6 +31,14 @@ final class AppModel: ObservableObject {
     private let safariBridge: SafariBridge
     private let userDefaults: UserDefaults
 
+    /// Repeating timer that polls `SafariBridge.currentURL()` while Safari
+    /// is frontmost. Cancelled when Safari becomes background. Cheap —
+    /// the AE call is local. Cadence (1.5s) is the trade-off between
+    /// per-site latency and CPU; bump down if it feels sluggish.
+    private var urlPollTimer: DispatchSourceTimer?
+    private static let urlPollInterval: DispatchTimeInterval = .milliseconds(1500)
+    private var lastReportedURL: URL?
+
     static let didShowLaunchAtLoginPromptKey = "didShowLaunchAtLoginPrompt"
 
     init(
@@ -345,6 +353,65 @@ final class AppModel: ObservableObject {
 
     func safariFrontmostChanged(_ isFrontmost: Bool) {
         eventTapService.updateSafariFrontmost(isFrontmost)
+        if isFrontmost {
+            startURLPoll()
+        } else {
+            stopURLPoll()
+        }
+    }
+
+    /// Begin polling Safari's frontmost URL. AppleScript polling is
+    /// cheaper than continuous AX observation here — AX's URL-changed
+    /// notification isn't reliable on all Safari versions, and a 1.5s
+    /// poll matches Vimium's "couple-second" latency expectations.
+    private func startURLPoll() {
+        stopURLPoll()
+        guard safariBridge.hasAccess else { return }
+        // Fire once immediately so the disabled-by-site state is current
+        // before the user has a chance to press a key.
+        pollSafariURL()
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + Self.urlPollInterval, repeating: Self.urlPollInterval)
+        timer.setEventHandler { [weak self] in
+            self?.pollSafariURL()
+        }
+        urlPollTimer = timer
+        timer.resume()
+    }
+
+    private func stopURLPoll() {
+        urlPollTimer?.cancel()
+        urlPollTimer = nil
+        lastReportedURL = nil
+        eventTapService.updateCurrentURL(nil)
+    }
+
+    private func pollSafariURL() {
+        let url = safariBridge.currentURL()
+        if url != lastReportedURL {
+            lastReportedURL = url
+            eventTapService.updateCurrentURL(url)
+        }
+    }
+
+    func addDisabledHost(_ host: String) {
+        let normalized = host.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !normalized.isEmpty, !settings.disabledHosts.contains(normalized) else { return }
+        settings.disabledHosts.append(normalized)
+        settingsStore.save(settings)
+        eventTapService.updateSettings(settings)
+    }
+
+    func removeDisabledHost(at index: Int) {
+        guard settings.disabledHosts.indices.contains(index) else { return }
+        settings.disabledHosts.remove(at: index)
+        settingsStore.save(settings)
+        eventTapService.updateSettings(settings)
+    }
+
+    func disableCurrentHost() {
+        guard let host = lastReportedURL?.host else { return }
+        addDisabledHost(host)
     }
 
     func safariFocusEditableChanged(_ isEditable: Bool) {

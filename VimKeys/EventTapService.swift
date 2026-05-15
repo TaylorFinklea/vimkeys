@@ -80,6 +80,13 @@ final class EventTapService {
         engine?.updateFocusEditable(isEditable)
     }
 
+    func updateCurrentURL(_ url: URL?) {
+        lock.lock()
+        let engine = engine
+        lock.unlock()
+        engine?.updateCurrentURL(url)
+    }
+
     func exitHintMode() {
         lock.lock()
         let engine = engine

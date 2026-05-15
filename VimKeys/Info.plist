@@ -27,11 +27,11 @@
 	<key>NSAppleEventsUsageDescription</key>
 	<string>VimKeys uses Apple Events to read Safari's open tabs and URL, copy the current page link to the clipboard, and open URLs you type in the vomnibar (o / O / T / yy / p / P).</string>
 	<key>SUEnableAutomaticChecks</key>
-	<false/>
+	<true/>
 	<key>SUFeedURL</key>
 	<string>https://github.com/TaylorFinklea/vimkeys/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string></string>
+	<string>l2ghc9Y6kQcCddTEo6oRIJ2KL3rrE1ji/Xz+i9bme70=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
 </dict>

@@ -48,13 +48,14 @@ targets:
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
         NSAppleEventsUsageDescription: "VimKeys uses Apple Events to read Safari's open tabs and URL, copy the current page link to the clipboard, and open URLs you type in the vomnibar (o / O / T / yy / p / P)."
-        # Sparkle auto-update keys. The matching EdDSA private key is generated
-        # by Sparkle's `generate_keys` and stored in the release-builder's macOS
-        # keychain. V-M1 ships with an empty SUPublicEDKey and automatic checks
-        # disabled; V-M6 generates the real keypair and flips both on.
-        SUPublicEDKey: ""
+        # Sparkle auto-update keys. The matching EdDSA private key lives in
+        # the release-builder's login keychain (shared with LayerKeys —
+        # both apps' updates are signed with the same EdDSA pair). For
+        # CI the private key is fed via the SPARKLE_EDDSA_PRIVATE_KEY
+        # GitHub secret.
+        SUPublicEDKey: "l2ghc9Y6kQcCddTEo6oRIJ2KL3rrE1ji/Xz+i9bme70="
         SUFeedURL: "https://github.com/TaylorFinklea/vimkeys/releases/latest/download/appcast.xml"
-        SUEnableAutomaticChecks: false
+        SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 86400
     scheme:
       gatherCoverageData: false

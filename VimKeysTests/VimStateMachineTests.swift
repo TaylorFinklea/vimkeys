@@ -417,24 +417,32 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(decision.intent, .passThrough)
     }
 
-    /// Bookmark bindings (`b`/`B`) defer to V-M5 because reading
-    /// `~/Library/Safari/Bookmarks.plist` needs Full Disk Access — a
-    /// heavier TCC ask than the rest of the vomnibar uses. Verify they
-    /// stay pass-through until that lands.
-    func testDecideBookmarkBindingsPassThroughAtVM4() {
-        for char in ["b", "B"] {
-            var machine = VimStateMachine(settings: defaultSettings())
-            machine.updateSafariFrontmost(true)
-            let decision = machine.decide(
-                eventType: .keyDown,
-                keyCode: 0x00,
-                characters: char,
-                flags: char == "B" ? .maskShift : [],
-                timestamp: baseTimestamp
-            )
-            XCTAssertEqual(decision.intent, .passThrough,
-                           "V-M5 char '\(char)' should pass through at V-M4")
-        }
+    /// `b`/`B` enter bookmark-flavored vomnibar sessions. Verify the
+    /// flavor + intent shape.
+    func testDecideBLowercaseOpensBookmarkVomnibar() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let decision = machine.decide(
+            eventType: .keyDown, keyCode: 0x0B, characters: "b",
+            flags: [], timestamp: baseTimestamp
+        )
+        XCTAssertEqual(
+            decision.intent,
+            .requestVomnibar(.bookmarks(openInNewTab: false))
+        )
+    }
+
+    func testDecideBUppercaseOpensBookmarkVomnibarNewTab() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let decision = machine.decide(
+            eventType: .keyDown, keyCode: 0x0B, characters: "B",
+            flags: .maskShift, timestamp: baseTimestamp
+        )
+        XCTAssertEqual(
+            decision.intent,
+            .requestVomnibar(.bookmarks(openInNewTab: true))
+        )
     }
 
     // MARK: - V-M2 bindings: find / history / reload / insert / Esc / help

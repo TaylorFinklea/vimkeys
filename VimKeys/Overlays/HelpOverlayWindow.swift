@@ -130,10 +130,17 @@ private struct HelpEntry: Identifiable {
             HelpEntry(chord: "gi", command: "Focus first text input", detail: "Skips the overlay, focuses directly"),
             HelpEntry(chord: "gs", command: "View source", detail: "Cmd+Option+U"),
         ]),
-        HelpSection(title: "Coming later", entries: [
-            HelpEntry(chord: "yy / yf", command: "Copy URL / link (V-M4)", detail: "Yank to clipboard"),
-            HelpEntry(chord: "o O b B T", command: "Vomnibar (V-M4)", detail: "URL / bookmark / tab search"),
-            HelpEntry(chord: "Esc Esc", command: "Suspend until reload (V-M5)", detail: "Quick chord to silence VimKeys on this page"),
+        HelpSection(title: "Clipboard & vomnibar", entries: [
+            HelpEntry(chord: "yy", command: "Copy current URL", detail: "Apple Events"),
+            HelpEntry(chord: "yf", command: "Copy a link via hint", detail: "Hint mode, but yank instead of click"),
+            HelpEntry(chord: "p / P", command: "Open clipboard URL", detail: "Current / new tab; falls back to search"),
+            HelpEntry(chord: "o / O", command: "Open URL or search", detail: "DuckDuckGo for non-URL queries"),
+            HelpEntry(chord: "T", command: "Switch tab", detail: "Filter by title or URL"),
+            HelpEntry(chord: "b / B", command: "Bookmark vomnibar", detail: "Requires Full Disk Access"),
+        ]),
+        HelpSection(title: "Suspend & sites", entries: [
+            HelpEntry(chord: "Esc Esc", command: "Toggle suspend on this URL", detail: "Cleared on navigation"),
+            HelpEntry(chord: "Settings \u{2192} Sites", command: "Persistent per-host disable", detail: "Suffix-matched"),
         ]),
     ]
 }

@@ -10,11 +10,17 @@ import Foundation
 final class VomnibarCoordinator {
     var onExitVomnibar: (() -> Void)?
 
+    /// Surfaced so AppModel can flash an error banner when bookmarks
+    /// reading fails (Full Disk Access not granted). Closure invoked with
+    /// a short human-readable message.
+    var onError: ((String) -> Void)?
+
     private let window = VomnibarWindow()
     private let bridge: SafariBridge
     private var flavor: VomnibarFlavor = .url(openInNewTab: false)
     private var query: String = ""
     private var tabs: [SafariBridge.Tab] = []
+    private var bookmarks: [SafariBookmarks.Entry] = []
 
     init(bridge: SafariBridge = .shared) {
         self.bridge = bridge
@@ -34,10 +40,32 @@ final class VomnibarCoordinator {
         switch flavor {
         case .url:
             tabs = []
+            bookmarks = []
             window.viewModel.mode = .url
         case .tabs:
             tabs = bridge.openTabs()
+            bookmarks = []
             window.viewModel.mode = .tabs
+        case .bookmarks:
+            tabs = []
+            switch SafariBookmarks.read() {
+            case .success(let entries):
+                bookmarks = entries
+            case .failure(let error):
+                let message: String
+                switch error {
+                case .permissionDenied:
+                    message = "Grant Full Disk Access (Privacy & Security \u{2192} Full Disk Access \u{2192} VimKeys)."
+                case .fileMissing:
+                    message = "Safari has no bookmarks file at the expected path."
+                case .malformed:
+                    message = "Couldn't parse Safari's Bookmarks.plist."
+                }
+                onError?(message)
+                exit()
+                return
+            }
+            window.viewModel.mode = .url
         }
 
         refreshSuggestions()
@@ -121,6 +149,7 @@ final class VomnibarCoordinator {
         switch flavor {
         case .url(let openInNewTab): newTab = openInNewTab
         case .tabs: newTab = false
+        case .bookmarks(let openInNewTab): newTab = openInNewTab
         }
         bridge.open(url: url, inNewTab: newTab)
     }
@@ -134,8 +163,26 @@ final class VomnibarCoordinator {
             suggestions = urlSuggestions(for: query)
         case .tabs:
             suggestions = tabSuggestions(for: query)
+        case .bookmarks:
+            suggestions = bookmarkSuggestions(for: query)
         }
         window.viewModel.suggestions = suggestions
+    }
+
+    private func bookmarkSuggestions(for query: String) -> [VomnibarSuggestion] {
+        let needle = query.lowercased().trimmingCharacters(in: .whitespaces)
+        let filtered: [SafariBookmarks.Entry]
+        if needle.isEmpty {
+            filtered = bookmarks
+        } else {
+            filtered = bookmarks.filter {
+                $0.title.lowercased().contains(needle)
+                    || $0.url.absoluteString.lowercased().contains(needle)
+            }
+        }
+        return filtered.prefix(200).map {
+            VomnibarSuggestion(title: $0.title, url: $0.url, kind: .url)
+        }
     }
 
     private func urlSuggestions(for query: String) -> [VomnibarSuggestion] {

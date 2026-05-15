@@ -124,8 +124,13 @@ private struct HelpEntry: Identifiable {
             HelpEntry(chord: "Esc", command: "Exit insert / cancel prefix", detail: "Returns to normal mode"),
             HelpEntry(chord: "?", command: "Show / dismiss help", detail: "This window"),
         ]),
+        HelpSection(title: "Link hints", entries: [
+            HelpEntry(chord: "f", command: "Hint and click", detail: "Type the label to click the link/button"),
+            HelpEntry(chord: "F", command: "Hint, open in new tab", detail: "Cmd+click on selection"),
+            HelpEntry(chord: "gi", command: "Focus first text input", detail: "Skips the overlay, focuses directly"),
+            HelpEntry(chord: "gs", command: "View source", detail: "Cmd+Option+U"),
+        ]),
         HelpSection(title: "Coming later", entries: [
-            HelpEntry(chord: "f / F / gi", command: "Link hints (V-M3)", detail: "Click any visible link by typing a label"),
             HelpEntry(chord: "yy / yf", command: "Copy URL / link (V-M4)", detail: "Yank to clipboard"),
             HelpEntry(chord: "o O b B T", command: "Vomnibar (V-M4)", detail: "URL / bookmark / tab search"),
             HelpEntry(chord: "Esc Esc", command: "Suspend until reload (V-M5)", detail: "Quick chord to silence VimKeys on this page"),

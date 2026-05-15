@@ -32,6 +32,7 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     private let onForwardVomnibarKey: (String) -> Void
     private let onCopyCurrentURL: () -> Void
     private let onOpenClipboardURL: (Bool) -> Void
+    private let onToggleSuspended: () -> Void
 
     private var thread: Thread?
     private var tapPort: CFMachPort?
@@ -52,7 +53,8 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         onRequestVomnibar: @escaping (VomnibarFlavor) -> Void = { _ in },
         onForwardVomnibarKey: @escaping (String) -> Void = { _ in },
         onCopyCurrentURL: @escaping () -> Void = {},
-        onOpenClipboardURL: @escaping (Bool) -> Void = { _ in }
+        onOpenClipboardURL: @escaping (Bool) -> Void = { _ in },
+        onToggleSuspended: @escaping () -> Void = {}
     ) {
         stateMachine = VimStateMachine(settings: settings)
         self.onModeChange = onModeChange
@@ -65,6 +67,26 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         self.onForwardVomnibarKey = onForwardVomnibarKey
         self.onCopyCurrentURL = onCopyCurrentURL
         self.onOpenClipboardURL = onOpenClipboardURL
+        self.onToggleSuspended = onToggleSuspended
+    }
+
+    /// Called by AppModel after the user binds `Esc-Esc` from a UI button
+    /// (vs. the engine emitting `.toggleSuspended` from a chord). Safe
+    /// from any thread.
+    func toggleSuspendOnCurrentURL() {
+        guard let thread else { return }
+        perform(#selector(toggleSuspendOnThread), on: thread, with: nil, waitUntilDone: false)
+    }
+
+    @objc
+    private func toggleSuspendOnThread() {
+        stateMachineLock.lock()
+        let decision = stateMachine.toggleSuspendOnCurrentURL()
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+        if decision != nil {
+            onModeChange(mode)
+        }
     }
 
     func updateSettings(_ settings: VimSettings) {
@@ -310,13 +332,14 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         }
 
         let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        // Resolve characters via a thread-safe US-QWERTY lookup. The
-        // previous `NSEvent(cgEvent:).charactersIgnoringModifiers` call
-        // went through HIToolbox's TextInputSources, which on macOS 26
-        // asserts main-thread and SIGTRAPs the engine thread.
-        let characters = USKeyboardLayout.characters(
+        // Resolve characters against the *current* keyboard layout via a
+        // MainActor-refreshed snapshot. UCKeyTranslate is a pure function
+        // over the cached layout data so it's safe to call from the tap
+        // thread — no HIToolbox TextInputSources path, hence no macOS-26
+        // main-thread assertion.
+        let characters = KeyboardLayoutCache.shared.characters(
             forKeyCode: keyCode,
-            shifted: event.flags.contains(.maskShift)
+            flags: event.flags
         )
 
         stateMachineLock.lock()
@@ -391,6 +414,10 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             onOpenClipboardURL(inNewTab)
             return nil
 
+        case .toggleSuspended:
+            onToggleSuspended()
+            return nil
+
         case .unfocusActiveElement:
             // Post a plain Escape: Safari uses it to blur the focused field.
             postKey(virtualKey: VimKeyCode.escape, flags: [])
@@ -400,7 +427,7 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
              .dispatchHintClick,
              .requestSafariURL, .requestBookmarks, .requestOpenTabs,
              .openURL, .copyToClipboard,
-             .toggleSuspended, .showHelp:
+             .showHelp:
             // Forward-compat: future milestones bind these. Falling back
             // to passThrough means a binding case that escapes into the
             // catalog accidentally won't silently swallow keystrokes.

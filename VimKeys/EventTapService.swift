@@ -46,6 +46,7 @@ final class EventTapService {
     var onForwardVomnibarKey: ((String) -> Void)?
     var onCopyCurrentURL: (() -> Void)?
     var onOpenClipboardURL: ((Bool) -> Void)?
+    var onToggleSuspended: (() -> Void)?
 
     private let lock = NSLock()
     private var settings: VimSettings
@@ -101,6 +102,13 @@ final class EventTapService {
         engine?.exitVomnibarMode()
     }
 
+    func toggleSuspendOnCurrentURL() {
+        lock.lock()
+        let engine = engine
+        lock.unlock()
+        engine?.toggleSuspendOnCurrentURL()
+    }
+
     @discardableResult
     func start() -> Bool {
         stop()
@@ -141,6 +149,9 @@ final class EventTapService {
             },
             onOpenClipboardURL: { [weak self] inNewTab in
                 self?.onOpenClipboardURL?(inNewTab)
+            },
+            onToggleSuspended: { [weak self] in
+                self?.onToggleSuspended?()
             }
         )
         let started = engine.start()

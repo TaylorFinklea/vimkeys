@@ -45,10 +45,12 @@ struct VomnibarState: Equatable {
 }
 
 /// What kind of vomnibar session is active. `url(openInNewTab:)` covers
-/// `o` / `O`; `tabs` covers `T`.
+/// `o` / `O`; `tabs` covers `T`; `bookmarks(openInNewTab:)` covers `b` /
+/// `B` (requires Full Disk Access for Safari's Bookmarks.plist).
 enum VomnibarFlavor: Equatable {
     case url(openInNewTab: Bool)
     case tabs
+    case bookmarks(openInNewTab: Bool)
 }
 
 enum ScrollDirection: Equatable {
@@ -142,6 +144,18 @@ struct VimDecision: Equatable {
 struct VimStateMachine {
     private(set) var mode: VimMode = .disabled
     private(set) var currentURL: URL?
+    /// Session-scoped suspend — set by the Esc-Esc chord. Lives only in
+    /// memory; navigating away clears it (mirrors Vimium's "suspend until
+    /// reload" semantics with the simplest possible bookkeeping).
+    private(set) var sessionSuspendedURL: URL?
+    /// Timestamp of the last `Esc` keydown, in CG event nanoseconds. Used
+    /// to detect the double-press chord. Cleared on any non-Esc key.
+    private var lastEscTimestamp: UInt64?
+    /// Window inside which two `Esc` presses count as a chord. 350 ms is
+    /// loose enough to absorb hesitation, tight enough that a single Esc
+    /// followed by typing doesn't accidentally suspend.
+    static let chordWindowNanoseconds: UInt64 = 350_000_000
+
     var settings: VimSettings {
         didSet {
             // Re-evaluate disabled-by-site state when the user edits the
@@ -187,10 +201,27 @@ struct VimStateMachine {
 
     /// Called by AppModel when Safari's frontmost URL changes (via polling
     /// `SafariBridge.currentURL()`). Triggers a mode transition iff the
-    /// host's disabled-state flips.
+    /// host's disabled-state flips. Navigating away from a session-
+    /// suspended URL also clears that suspend.
     @discardableResult
     mutating func updateCurrentURL(_ url: URL?) -> VimDecision? {
+        if url != sessionSuspendedURL {
+            sessionSuspendedURL = nil
+        }
         currentURL = url
+        return reconcileDisabledBySite(safariFrontmost: !isModeOff || mode == .disabledBySite)
+    }
+
+    /// Esc-Esc chord. Toggles session suspend on the current URL: enters
+    /// `.disabledBySite` if not already suspended, exits if it was.
+    @discardableResult
+    mutating func toggleSuspendOnCurrentURL() -> VimDecision? {
+        guard let url = currentURL else { return nil }
+        if sessionSuspendedURL == url {
+            sessionSuspendedURL = nil
+        } else {
+            sessionSuspendedURL = url
+        }
         return reconcileDisabledBySite(safariFrontmost: !isModeOff || mode == .disabledBySite)
     }
 
@@ -212,6 +243,7 @@ struct VimStateMachine {
 
     private var isCurrentHostDisabled: Bool {
         guard let url = currentURL else { return false }
+        if sessionSuspendedURL == url { return true }
         return SitesStore.isDisabled(url: url, in: settings.disabledHosts)
     }
 
@@ -273,11 +305,25 @@ struct VimStateMachine {
         keyCode: CGKeyCode,
         characters: String?,
         flags: CGEventFlags,
-        timestamp _: UInt64
+        timestamp: UInt64
     ) -> VimDecision {
         // Only act on keyDown. Pass keyUp through transparently.
         guard eventType == .keyDown else {
             return VimDecision(intent: .passThrough)
+        }
+
+        // Esc-Esc chord detection — runs BEFORE the disabled-mode pass-
+        // through so the user can un-suspend a page they previously
+        // suspended. First Esc records the timestamp; second Esc within
+        // the window emits `.toggleSuspended`.
+        if keyCode == VimKeyCode.escape {
+            if let last = lastEscTimestamp, timestamp &- last <= Self.chordWindowNanoseconds {
+                lastEscTimestamp = nil
+                return VimDecision(intent: .toggleSuspended)
+            }
+            lastEscTimestamp = timestamp
+        } else {
+            lastEscTimestamp = nil
         }
 
         // Disabled (Safari not frontmost) or disabled-by-site: pass
@@ -515,6 +561,14 @@ struct VimStateMachine {
             let flavor = VomnibarFlavor.tabs
             return setMode(.vomnibar(VomnibarState(flavor: flavor)),
                            intent: .requestVomnibar(flavor))
+        case .vomnibarBookmarks:
+            let flavor = VomnibarFlavor.bookmarks(openInNewTab: false)
+            return setMode(.vomnibar(VomnibarState(flavor: flavor)),
+                           intent: .requestVomnibar(flavor))
+        case .vomnibarBookmarksNewTab:
+            let flavor = VomnibarFlavor.bookmarks(openInNewTab: true)
+            return setMode(.vomnibar(VomnibarState(flavor: flavor)),
+                           intent: .requestVomnibar(flavor))
         case .copyURL:
             // V-M4: `yy` — copy current Safari tab URL via SafariBridge.
             if fromPrefix { return setMode(.normal(prefix: .none), intent: .copyCurrentURL) }
@@ -591,6 +645,7 @@ struct VimStateMachine {
              .hint, .hintNewTab, .focusInput,
              .copyURL, .copyHintURL,
              .vomnibarURL, .vomnibarURLNewTab, .vomnibarTabs,
+             .vomnibarBookmarks, .vomnibarBookmarksNewTab,
              .openClipboard, .openClipboardNewTab:
             return .consume
 
@@ -600,11 +655,10 @@ struct VimStateMachine {
             // standard postKey path.
             return .postKey(virtualKey: VimKeyCode.u, flags: [.maskCommand, .maskAlternate])
 
-        case .suspendChord,
-             .vomnibarBookmarks, .vomnibarBookmarksNewTab:
-            // Suspend chord arrives in V-M5. Bookmarks require reading
-            // Safari's bookmarks.plist (full-disk-access TCC); deferred.
-            return .passThrough
+        case .suspendChord:
+            // Triggered by the Esc-Esc chord, not by character keys.
+            // Reaching here is a forward-compat safety net.
+            return .toggleSuspended
         }
     }
 

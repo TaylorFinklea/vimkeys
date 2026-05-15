@@ -79,6 +79,8 @@ final class AppModel: ObservableObject {
         vomnibar.onExitVomnibar = { [weak service] in
             service?.exitVomnibarMode()
         }
+        // `onError` captures `self` weakly so it has to be installed after
+        // every stored property is initialized — done lower in init().
         self.safariBridge = safariBridge
 
         // Wire SafariObserver callbacks via a deferred closure so we can
@@ -162,12 +164,32 @@ final class AppModel: ObservableObject {
                 self?.openClipboardURL(inNewTab: inNewTab)
             }
         }
+        service.onToggleSuspended = { [weak service] in
+            // Esc-Esc chord. State machine already detected the chord
+            // and emitted the intent; engine routes it back to itself
+            // (via service) so the toggle happens on the engine thread
+            // where the state machine lives.
+            service?.toggleSuspendOnCurrentURL()
+        }
+
+        // Vomnibar error sink (deferred from above): bookmarks reads
+        // surface FDA-denied messages here so the user has a breadcrumb.
+        vomnibar.onError = { [weak self] message in
+            Task { @MainActor in
+                self?.lastError = message
+            }
+        }
 
         if permissionState.isGranted {
             if !service.start() {
                 lastError = "VimKeys could not start the global event tap."
             }
         }
+
+        // Seed the keyboard layout cache so the engine's character
+        // resolver can use UCKeyTranslate from the tap thread on the very
+        // first keystroke. Refreshed automatically on input-source change.
+        KeyboardLayoutCache.shared.start()
 
         safariObserver.start()
         // Seed the engine with the current frontmost state — SafariObserver

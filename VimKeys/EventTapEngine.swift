@@ -28,6 +28,10 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     private let onDismissOverlay: () -> Void
     private let onRequestHints: (Bool, Bool, HintFilter) -> Void
     private let onForwardHintKey: (String) -> Void
+    private let onRequestVomnibar: (VomnibarFlavor) -> Void
+    private let onForwardVomnibarKey: (String) -> Void
+    private let onCopyCurrentURL: () -> Void
+    private let onOpenClipboardURL: (Bool) -> Void
 
     private var thread: Thread?
     private var tapPort: CFMachPort?
@@ -44,7 +48,11 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         onShowHelp: @escaping () -> Void = {},
         onDismissOverlay: @escaping () -> Void = {},
         onRequestHints: @escaping (Bool, Bool, HintFilter) -> Void = { _, _, _ in },
-        onForwardHintKey: @escaping (String) -> Void = { _ in }
+        onForwardHintKey: @escaping (String) -> Void = { _ in },
+        onRequestVomnibar: @escaping (VomnibarFlavor) -> Void = { _ in },
+        onForwardVomnibarKey: @escaping (String) -> Void = { _ in },
+        onCopyCurrentURL: @escaping () -> Void = {},
+        onOpenClipboardURL: @escaping (Bool) -> Void = { _ in }
     ) {
         stateMachine = VimStateMachine(settings: settings)
         self.onModeChange = onModeChange
@@ -53,6 +61,10 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         self.onDismissOverlay = onDismissOverlay
         self.onRequestHints = onRequestHints
         self.onForwardHintKey = onForwardHintKey
+        self.onRequestVomnibar = onRequestVomnibar
+        self.onForwardVomnibarKey = onForwardVomnibarKey
+        self.onCopyCurrentURL = onCopyCurrentURL
+        self.onOpenClipboardURL = onOpenClipboardURL
     }
 
     func updateSettings(_ settings: VimSettings) {
@@ -91,6 +103,24 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     private func exitHintModeOnThread() {
         stateMachineLock.lock()
         let decision = stateMachine.exitHintMode()
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+
+        if decision != nil {
+            onModeChange(mode)
+        }
+    }
+
+    /// Called by `VomnibarCoordinator` after a session ends.
+    func exitVomnibarMode() {
+        guard let thread else { return }
+        perform(#selector(exitVomnibarModeOnThread), on: thread, with: nil, waitUntilDone: false)
+    }
+
+    @objc
+    private func exitVomnibarModeOnThread() {
+        stateMachineLock.lock()
+        let decision = stateMachine.exitVomnibarMode()
         let mode = stateMachine.mode
         stateMachineLock.unlock()
 
@@ -323,6 +353,22 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
 
         case let .forwardHintKey(chars):
             onForwardHintKey(chars)
+            return nil
+
+        case let .requestVomnibar(flavor):
+            onRequestVomnibar(flavor)
+            return nil
+
+        case let .forwardVomnibarKey(chars):
+            onForwardVomnibarKey(chars)
+            return nil
+
+        case .copyCurrentURL:
+            onCopyCurrentURL()
+            return nil
+
+        case let .openClipboardURL(inNewTab):
+            onOpenClipboardURL(inNewTab)
             return nil
 
         case .unfocusActiveElement:

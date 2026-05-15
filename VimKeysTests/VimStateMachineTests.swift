@@ -417,23 +417,23 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(decision.intent, .passThrough)
     }
 
-    /// V-M4-only single-character bindings still resolve to `.passThrough`
-    /// at V-M3. V-M3 bindings (`f`, `F`) are tested in the hint-mode
-    /// section below.
-    func testDecideVM4ForwardCompatBindingsPassThroughAtVM3() {
-        var machine = VimStateMachine(settings: defaultSettings())
-        machine.updateSafariFrontmost(true)
-
-        for char in ["o", "O", "b", "B", "T", "p", "P"] {
+    /// Bookmark bindings (`b`/`B`) defer to V-M5 because reading
+    /// `~/Library/Safari/Bookmarks.plist` needs Full Disk Access — a
+    /// heavier TCC ask than the rest of the vomnibar uses. Verify they
+    /// stay pass-through until that lands.
+    func testDecideBookmarkBindingsPassThroughAtVM4() {
+        for char in ["b", "B"] {
+            var machine = VimStateMachine(settings: defaultSettings())
+            machine.updateSafariFrontmost(true)
             let decision = machine.decide(
                 eventType: .keyDown,
                 keyCode: 0x00,
                 characters: char,
-                flags: char == char.uppercased() && char != char.lowercased() ? .maskShift : [],
+                flags: char == "B" ? .maskShift : [],
                 timestamp: baseTimestamp
             )
             XCTAssertEqual(decision.intent, .passThrough,
-                           "V-M4 char '\(char)' should pass through at V-M3")
+                           "V-M5 char '\(char)' should pass through at V-M4")
         }
     }
 

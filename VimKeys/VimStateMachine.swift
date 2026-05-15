@@ -32,8 +32,19 @@ struct HintState: Equatable {
     let filter: HintFilter
 }
 
-/// V-M4 stub.
-struct VomnibarState: Equatable {}
+/// V-M4 vomnibar marker. Coordinator owns the query buffer + suggestions;
+/// the state machine just remembers what flavor of session is running
+/// so Esc forwards correctly.
+struct VomnibarState: Equatable {
+    let flavor: VomnibarFlavor
+}
+
+/// What kind of vomnibar session is active. `url(openInNewTab:)` covers
+/// `o` / `O`; `tabs` covers `T`.
+enum VomnibarFlavor: Equatable {
+    case url(openInNewTab: Bool)
+    case tabs
+}
 
 enum ScrollDirection: Equatable {
     case vertical
@@ -86,6 +97,17 @@ enum VimIntent: Equatable {
     /// machine itself never inspects the buffer.
     case forwardHintKey(String)
     case dispatchHintClick(at: CGPoint, modifierFlags: CGEventFlags)
+    /// V-M4: open the vomnibar window with a particular flavor. Engine
+    /// forwards to `VomnibarCoordinator.start(flavor:)`.
+    case requestVomnibar(VomnibarFlavor)
+    /// V-M4: forward a keystroke into the vomnibar (query updates, Enter,
+    /// arrow keys, Ctrl-N/P).
+    case forwardVomnibarKey(String)
+    /// V-M4: copy the URL of Safari's frontmost tab to the clipboard.
+    /// Engine bounces to `AppModel` (MainActor) which uses `SafariBridge`.
+    case copyCurrentURL
+    /// V-M4: open the URL currently on the clipboard.
+    case openClipboardURL(inNewTab: Bool)
     case requestSafariURL
     case requestBookmarks
     case requestOpenTabs
@@ -183,6 +205,14 @@ struct VimStateMachine {
         return setMode(.normal(prefix: .none), intent: .passThrough)
     }
 
+    /// Called by the engine after `VomnibarCoordinator` finishes a
+    /// session (opened a URL / cancelled). Drops back to `.normal`.
+    @discardableResult
+    mutating func exitVomnibarMode() -> VimDecision? {
+        guard case .vomnibar = mode else { return nil }
+        return setMode(.normal(prefix: .none), intent: .passThrough)
+    }
+
     // MARK: - Per-event decide
 
     mutating func decide(
@@ -231,9 +261,11 @@ struct VimStateMachine {
             return decideNormal(prefix: prefix, keyCode: keyCode, characters: characters)
         case .hint:
             return decideHint(characters: characters)
-        case .disabled, .insert, .find, .vomnibar, .help:
-            // Disabled / insert / help are handled above; .find /
-            // .vomnibar arrive in V-M4.
+        case .vomnibar:
+            return decideVomnibar(keyCode: keyCode, characters: characters)
+        case .disabled, .insert, .find, .help:
+            // Disabled / insert / help are handled above; .find arrives
+            // in V-M5 (it's currently a postKey to Cmd+F).
             return VimDecision(intent: .passThrough)
         }
     }
@@ -243,6 +275,23 @@ struct VimStateMachine {
             return VimDecision(intent: .consume)
         }
         return VimDecision(intent: .forwardHintKey(chars))
+    }
+
+    private func decideVomnibar(keyCode: CGKeyCode, characters: String?) -> VimDecision {
+        // Translate non-character keys to sentinel strings the coordinator
+        // recognises. Vomnibar needs Return / backspace / up / down on
+        // top of the character keys USKeyboardLayout can resolve.
+        switch keyCode {
+        case VimKeyCode.delete:  return VimDecision(intent: .forwardVomnibarKey("\u{08}"))
+        case VimKeyCode.returnKey: return VimDecision(intent: .forwardVomnibarKey("\u{0D}"))
+        case VimKeyCode.upArrow: return VimDecision(intent: .forwardVomnibarKey("\u{0B}"))
+        case VimKeyCode.downArrow: return VimDecision(intent: .forwardVomnibarKey("\u{0C}"))
+        default: break
+        }
+        guard let chars = characters, !chars.isEmpty else {
+            return VimDecision(intent: .consume)
+        }
+        return VimDecision(intent: .forwardVomnibarKey(chars))
     }
 
     // MARK: - Esc handling
@@ -266,7 +315,9 @@ struct VimStateMachine {
             return setMode(.normal(prefix: .none), intent: .dismissOverlay)
         case .hint:
             return setMode(.normal(prefix: .none), intent: .dismissOverlay)
-        case .disabled, .find, .vomnibar:
+        case .vomnibar:
+            return setMode(.normal(prefix: .none), intent: .dismissOverlay)
+        case .disabled, .find:
             return VimDecision(intent: .passThrough)
         }
     }
@@ -289,11 +340,8 @@ struct VimStateMachine {
             return decideNormalWithCount(n: n, chars: chars)
         case .g(let count):
             return decideAfterG(count: count, chars: chars)
-        case .y:
-            // Y-prefix not enterable at V-M2; if somehow set, cancel and
-            // re-evaluate the keystroke from `.normal(.none)`.
-            _ = setMode(.normal(prefix: .none), intent: .passThrough)
-            return decideNormalNoPrefix(chars: chars)
+        case .y(let count):
+            return decideAfterY(count: count, chars: chars)
         }
     }
 
@@ -306,6 +354,12 @@ struct VimStateMachine {
 
         if chars == "g" {
             return setMode(.normal(prefix: .g(count: nil)), intent: .consume)
+        }
+
+        if chars == "y" {
+            // V-M4: `y` starts the yank prefix. Waits for `yy` (copy URL)
+            // or `yf` (copy hint URL).
+            return setMode(.normal(prefix: .y(count: nil)), intent: .consume)
         }
 
         return dispatchSingleChar(chars: chars, count: 1)
@@ -328,6 +382,14 @@ struct VimStateMachine {
         guard let command = settings.bindings.gPrefix[chars] else {
             // Unknown follow-up: cancel prefix, pass through (don't try to
             // re-dispatch — Vim cancels the prefix and ignores).
+            return setMode(.normal(prefix: .none), intent: .passThrough)
+        }
+
+        return resolveCommand(command, count: count ?? 1, fromPrefix: true)
+    }
+
+    private mutating func decideAfterY(count: Int?, chars: String) -> VimDecision {
+        guard let command = settings.bindings.yPrefix[chars] else {
             return setMode(.normal(prefix: .none), intent: .passThrough)
         }
 
@@ -377,6 +439,35 @@ struct VimStateMachine {
             return setMode(.hint(state), intent: .requestHintTraversal(
                 openInNewTab: false, copyOnly: false, filter: .textInputsOnly
             ))
+        case .copyHintURL:
+            // V-M4: `yf` — hint, but on commit copy the URL instead of
+            // clicking. Coordinator branches on `copyOnly`.
+            let state = HintState(openInNewTab: false, copyOnly: true, filter: .anyClickable)
+            return setMode(.hint(state), intent: .requestHintTraversal(
+                openInNewTab: false, copyOnly: true, filter: .anyClickable
+            ))
+        case .vomnibarURL:
+            let flavor = VomnibarFlavor.url(openInNewTab: false)
+            return setMode(.vomnibar(VomnibarState(flavor: flavor)),
+                           intent: .requestVomnibar(flavor))
+        case .vomnibarURLNewTab:
+            let flavor = VomnibarFlavor.url(openInNewTab: true)
+            return setMode(.vomnibar(VomnibarState(flavor: flavor)),
+                           intent: .requestVomnibar(flavor))
+        case .vomnibarTabs:
+            let flavor = VomnibarFlavor.tabs
+            return setMode(.vomnibar(VomnibarState(flavor: flavor)),
+                           intent: .requestVomnibar(flavor))
+        case .copyURL:
+            // V-M4: `yy` — copy current Safari tab URL via SafariBridge.
+            if fromPrefix { return setMode(.normal(prefix: .none), intent: .copyCurrentURL) }
+            return VimDecision(intent: .copyCurrentURL)
+        case .openClipboard:
+            if fromPrefix { return setMode(.normal(prefix: .none), intent: .openClipboardURL(inNewTab: false)) }
+            return VimDecision(intent: .openClipboardURL(inNewTab: false))
+        case .openClipboardNewTab:
+            if fromPrefix { return setMode(.normal(prefix: .none), intent: .openClipboardURL(inNewTab: true)) }
+            return VimDecision(intent: .openClipboardURL(inNewTab: true))
         default:
             let intent = intentFor(command: command, count: count)
             if fromPrefix {
@@ -440,7 +531,10 @@ struct VimStateMachine {
         // Mode-affecting commands handled by `resolveCommand`; never
         // reach here.
         case .enterInsert, .escape, .help,
-             .hint, .hintNewTab, .focusInput:
+             .hint, .hintNewTab, .focusInput,
+             .copyURL, .copyHintURL,
+             .vomnibarURL, .vomnibarURLNewTab, .vomnibarTabs,
+             .openClipboard, .openClipboardNewTab:
             return .consume
 
         case .viewSource:
@@ -450,11 +544,9 @@ struct VimStateMachine {
             return .postKey(virtualKey: VimKeyCode.u, flags: [.maskCommand, .maskAlternate])
 
         case .suspendChord,
-             .copyURL, .copyHintURL,
-             .vomnibarURL, .vomnibarURLNewTab,
-             .vomnibarBookmarks, .vomnibarBookmarksNewTab, .vomnibarTabs,
-             .openClipboard, .openClipboardNewTab:
-            // Defined for forward-compat; behavior arrives in V-M4..V-M5.
+             .vomnibarBookmarks, .vomnibarBookmarksNewTab:
+            // Suspend chord arrives in V-M5. Bookmarks require reading
+            // Safari's bookmarks.plist (full-disk-access TCC); deferred.
             return .passThrough
         }
     }

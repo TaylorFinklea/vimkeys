@@ -132,6 +132,8 @@ enum VimKeyCode {
     static let escape: CGKeyCode = 0x35
     static let upArrow: CGKeyCode = 0x7E
     static let downArrow: CGKeyCode = 0x7D
+    static let returnKey: CGKeyCode = 0x24
+    static let delete: CGKeyCode = 0x33
 
     // V-M2 key-pass-through targets.
     static let f: CGKeyCode = 0x03

@@ -42,6 +42,10 @@ final class EventTapService {
     var onDismissOverlay: (() -> Void)?
     var onRequestHints: ((Bool, Bool, HintFilter) -> Void)?
     var onForwardHintKey: ((String) -> Void)?
+    var onRequestVomnibar: ((VomnibarFlavor) -> Void)?
+    var onForwardVomnibarKey: ((String) -> Void)?
+    var onCopyCurrentURL: (() -> Void)?
+    var onOpenClipboardURL: ((Bool) -> Void)?
 
     private let lock = NSLock()
     private var settings: VimSettings
@@ -83,6 +87,13 @@ final class EventTapService {
         engine?.exitHintMode()
     }
 
+    func exitVomnibarMode() {
+        lock.lock()
+        let engine = engine
+        lock.unlock()
+        engine?.exitVomnibarMode()
+    }
+
     @discardableResult
     func start() -> Bool {
         stop()
@@ -111,6 +122,18 @@ final class EventTapService {
             },
             onForwardHintKey: { [weak self] chars in
                 self?.onForwardHintKey?(chars)
+            },
+            onRequestVomnibar: { [weak self] flavor in
+                self?.onRequestVomnibar?(flavor)
+            },
+            onForwardVomnibarKey: { [weak self] chars in
+                self?.onForwardVomnibarKey?(chars)
+            },
+            onCopyCurrentURL: { [weak self] in
+                self?.onCopyCurrentURL?()
+            },
+            onOpenClipboardURL: { [weak self] inNewTab in
+                self?.onOpenClipboardURL?(inNewTab)
             }
         )
         let started = engine.start()

@@ -27,6 +27,8 @@ final class AppModel: ObservableObject {
     private let launchAtLoginController: LaunchAtLoginController
     private let overlayManager: OverlayManager
     private let linkHintCoordinator: LinkHintCoordinator
+    private let vomnibarCoordinator: VomnibarCoordinator
+    private let safariBridge: SafariBridge
     private let userDefaults: UserDefaults
 
     static let didShowLaunchAtLoginPromptKey = "didShowLaunchAtLoginPrompt"
@@ -37,6 +39,8 @@ final class AppModel: ObservableObject {
         launchAtLoginController: LaunchAtLoginController? = nil,
         overlayManager: OverlayManager? = nil,
         linkHintCoordinator: LinkHintCoordinator? = nil,
+        vomnibarCoordinator: VomnibarCoordinator? = nil,
+        safariBridge: SafariBridge = .shared,
         userDefaults: UserDefaults = .standard
     ) {
         self.settingsStore = settingsStore
@@ -61,6 +65,13 @@ final class AppModel: ObservableObject {
         hintCoordinator.onExitHintMode = { [weak service] in
             service?.exitHintMode()
         }
+
+        let vomnibar = vomnibarCoordinator ?? VomnibarCoordinator(bridge: safariBridge)
+        self.vomnibarCoordinator = vomnibar
+        vomnibar.onExitVomnibar = { [weak service] in
+            service?.exitVomnibarMode()
+        }
+        self.safariBridge = safariBridge
 
         // Wire SafariObserver callbacks via a deferred closure so we can
         // reference `self` once init returns. The Bool flows through
@@ -104,6 +115,7 @@ final class AppModel: ObservableObject {
             Task { @MainActor in
                 self?.overlayManager.dismiss()
                 self?.linkHintCoordinator.cancel()
+                self?.vomnibarCoordinator.cancel()
             }
         }
         service.onRequestHints = { [weak self] openInNewTab, copyOnly, filter in
@@ -120,6 +132,26 @@ final class AppModel: ObservableObject {
         service.onForwardHintKey = { [weak self] chars in
             Task { @MainActor in
                 self?.linkHintCoordinator.handleKey(chars: chars)
+            }
+        }
+        service.onRequestVomnibar = { [weak self] flavor in
+            Task { @MainActor in
+                self?.vomnibarCoordinator.start(flavor: flavor)
+            }
+        }
+        service.onForwardVomnibarKey = { [weak self] chars in
+            Task { @MainActor in
+                self?.vomnibarCoordinator.handleKey(chars: chars)
+            }
+        }
+        service.onCopyCurrentURL = { [weak self] in
+            Task { @MainActor in
+                self?.copyCurrentSafariURL()
+            }
+        }
+        service.onOpenClipboardURL = { [weak self] inNewTab in
+            Task { @MainActor in
+                self?.openClipboardURL(inNewTab: inNewTab)
             }
         }
 
@@ -317,6 +349,43 @@ final class AppModel: ObservableObject {
 
     func safariFocusEditableChanged(_ isEditable: Bool) {
         eventTapService.updateFocusEditable(isEditable)
+    }
+
+    /// Yank the URL of Safari's frontmost tab into the system clipboard
+    /// via `SafariBridge`. Surfaces missing Apple-Events trust as a flash
+    /// in `lastError` so users have a breadcrumb pointing at Privacy &
+    /// Security → Automation.
+    func copyCurrentSafariURL() {
+        guard let url = safariBridge.currentURL() else {
+            if !safariBridge.hasAccess {
+                lastError = "Grant Apple Events access (Privacy & Security \u{2192} Automation \u{2192} Safari)."
+            }
+            return
+        }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(url.absoluteString, forType: .string)
+    }
+
+    /// Open whatever URL is currently on the clipboard. Falls back to a
+    /// DuckDuckGo search if the clipboard contents don't parse as a URL.
+    /// Used by `p` / `P` ("paste and go" — Vimium convention).
+    func openClipboardURL(inNewTab: Bool) {
+        guard let raw = NSPasteboard.general.string(forType: .string),
+              !raw.isEmpty else { return }
+        let url: URL
+        if let parsed = URL(string: raw), parsed.scheme != nil {
+            url = parsed
+        } else if raw.contains("."), !raw.contains(" "),
+                  let stripped = URL(string: "https://" + raw) {
+            url = stripped
+        } else if var components = URLComponents(string: "https://duckduckgo.com/") {
+            components.queryItems = [URLQueryItem(name: "q", value: raw)]
+            guard let search = components.url else { return }
+            url = search
+        } else {
+            return
+        }
+        safariBridge.open(url: url, inNewTab: inNewTab)
     }
 
     var menuBarVariant: (variant: MenuBarIconView.Variant, badge: Bool) {

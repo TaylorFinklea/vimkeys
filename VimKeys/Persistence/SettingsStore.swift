@@ -13,6 +13,7 @@ struct SettingsStore {
 
     private enum Key {
         static let insertModeBehavior = "settings.insertModeBehavior"
+        static let hintAlphabet = "settings.hintAlphabet"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -25,14 +26,20 @@ struct SettingsStore {
            let behavior = InsertModeBehavior(rawValue: raw) {
             settings.insertModeBehavior = behavior
         }
+        if let alphabet = defaults.string(forKey: Key.hintAlphabet),
+           !alphabet.isEmpty {
+            settings.hintAlphabet = alphabet
+        }
         return settings
     }
 
     func save(_ settings: VimSettings) {
         defaults.set(settings.insertModeBehavior.rawValue, forKey: Key.insertModeBehavior)
+        defaults.set(settings.hintAlphabet, forKey: Key.hintAlphabet)
     }
 
     func reset() {
         defaults.removeObject(forKey: Key.insertModeBehavior)
+        defaults.removeObject(forKey: Key.hintAlphabet)
     }
 }

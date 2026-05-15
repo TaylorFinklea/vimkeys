@@ -23,8 +23,14 @@ enum CommandPrefix: Equatable {
     case y(count: Int?)    // `y` pressed, awaiting yy/yf (V-M4)
 }
 
-/// V-M3 stub.
-struct HintState: Equatable {}
+/// V-M3 hint-mode marker. Coordinator owns typed-prefix + label state;
+/// the state machine just remembers what flavor of hint session is
+/// running so Esc/key forwarding can be dispatched.
+struct HintState: Equatable {
+    let openInNewTab: Bool
+    let copyOnly: Bool
+    let filter: HintFilter
+}
 
 /// V-M4 stub.
 struct VomnibarState: Equatable {}
@@ -75,6 +81,10 @@ enum VimIntent: Equatable {
     case updateOverlay(OverlayUpdate)
     case dismissOverlay
     case requestHintTraversal(openInNewTab: Bool, copyOnly: Bool, filter: HintFilter)
+    /// Fires for every character typed while in `.hint` mode. The engine
+    /// forwards to `LinkHintCoordinator.handleKey(chars:)`; the state
+    /// machine itself never inspects the buffer.
+    case forwardHintKey(String)
     case dispatchHintClick(at: CGPoint, modifierFlags: CGEventFlags)
     case requestSafariURL
     case requestBookmarks
@@ -165,6 +175,14 @@ struct VimStateMachine {
         return setMode(.normal(prefix: .none), intent: .passThrough)
     }
 
+    /// Called by the engine after `LinkHintCoordinator` finishes a hint
+    /// session (clicked / copied / cancelled). Drops back to `.normal`.
+    @discardableResult
+    mutating func exitHintMode() -> VimDecision? {
+        guard case .hint = mode else { return nil }
+        return setMode(.normal(prefix: .none), intent: .passThrough)
+    }
+
     // MARK: - Per-event decide
 
     mutating func decide(
@@ -211,11 +229,20 @@ struct VimStateMachine {
         switch mode {
         case .normal(let prefix):
             return decideNormal(prefix: prefix, keyCode: keyCode, characters: characters)
-        case .disabled, .insert, .find, .hint, .vomnibar, .help:
-            // Disabled / insert / help are handled above; .find / .hint /
-            // .vomnibar arrive in V-M3 / V-M4.
+        case .hint:
+            return decideHint(characters: characters)
+        case .disabled, .insert, .find, .vomnibar, .help:
+            // Disabled / insert / help are handled above; .find /
+            // .vomnibar arrive in V-M4.
             return VimDecision(intent: .passThrough)
         }
+    }
+
+    private func decideHint(characters: String?) -> VimDecision {
+        guard let chars = characters, !chars.isEmpty else {
+            return VimDecision(intent: .consume)
+        }
+        return VimDecision(intent: .forwardHintKey(chars))
     }
 
     // MARK: - Esc handling
@@ -237,7 +264,9 @@ struct VimStateMachine {
             return VimDecision(intent: .passThrough)
         case .help:
             return setMode(.normal(prefix: .none), intent: .dismissOverlay)
-        case .disabled, .find, .hint, .vomnibar:
+        case .hint:
+            return setMode(.normal(prefix: .none), intent: .dismissOverlay)
+        case .disabled, .find, .vomnibar:
             return VimDecision(intent: .passThrough)
         }
     }
@@ -333,6 +362,21 @@ struct VimStateMachine {
             return setMode(.insert, intent: .consume)
         case .help:
             return setMode(.help, intent: .showOverlay(.help))
+        case .hint:
+            let state = HintState(openInNewTab: false, copyOnly: false, filter: .anyClickable)
+            return setMode(.hint(state), intent: .requestHintTraversal(
+                openInNewTab: false, copyOnly: false, filter: .anyClickable
+            ))
+        case .hintNewTab:
+            let state = HintState(openInNewTab: true, copyOnly: false, filter: .anyClickable)
+            return setMode(.hint(state), intent: .requestHintTraversal(
+                openInNewTab: true, copyOnly: false, filter: .anyClickable
+            ))
+        case .focusInput:
+            let state = HintState(openInNewTab: false, copyOnly: false, filter: .textInputsOnly)
+            return setMode(.hint(state), intent: .requestHintTraversal(
+                openInNewTab: false, copyOnly: false, filter: .textInputsOnly
+            ))
         default:
             let intent = intentFor(command: command, count: count)
             if fromPrefix {
@@ -395,15 +439,22 @@ struct VimStateMachine {
 
         // Mode-affecting commands handled by `resolveCommand`; never
         // reach here.
-        case .enterInsert, .escape, .help:
+        case .enterInsert, .escape, .help,
+             .hint, .hintNewTab, .focusInput:
             return .consume
 
-        case .suspendChord, .hint, .hintNewTab, .focusInput, .viewSource,
+        case .viewSource:
+            // Cmd+Option+U opens Safari's View Source inspector. Posted
+            // here (no hint UI needed) so `gs` round-trips through the
+            // standard postKey path.
+            return .postKey(virtualKey: VimKeyCode.u, flags: [.maskCommand, .maskAlternate])
+
+        case .suspendChord,
              .copyURL, .copyHintURL,
              .vomnibarURL, .vomnibarURLNewTab,
              .vomnibarBookmarks, .vomnibarBookmarksNewTab, .vomnibarTabs,
              .openClipboard, .openClipboardNewTab:
-            // Defined for forward-compat; behavior arrives in V-M3..V-M5.
+            // Defined for forward-compat; behavior arrives in V-M4..V-M5.
             return .passThrough
         }
     }

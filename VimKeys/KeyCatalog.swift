@@ -137,6 +137,7 @@ enum VimKeyCode {
     static let f: CGKeyCode = 0x03
     static let g: CGKeyCode = 0x05
     static let r: CGKeyCode = 0x0F
+    static let u: CGKeyCode = 0x20
     static let leftBracket: CGKeyCode = 0x21
     static let rightBracket: CGKeyCode = 0x1E
 }

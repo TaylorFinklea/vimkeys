@@ -26,6 +26,7 @@ final class AppModel: ObservableObject {
     private let safariObserver: SafariObserver
     private let launchAtLoginController: LaunchAtLoginController
     private let overlayManager: OverlayManager
+    private let linkHintCoordinator: LinkHintCoordinator
     private let userDefaults: UserDefaults
 
     static let didShowLaunchAtLoginPromptKey = "didShowLaunchAtLoginPrompt"
@@ -35,6 +36,7 @@ final class AppModel: ObservableObject {
         eventTapService: EventTapService? = nil,
         launchAtLoginController: LaunchAtLoginController? = nil,
         overlayManager: OverlayManager? = nil,
+        linkHintCoordinator: LinkHintCoordinator? = nil,
         userDefaults: UserDefaults = .standard
     ) {
         self.settingsStore = settingsStore
@@ -53,6 +55,12 @@ final class AppModel: ObservableObject {
 
         let manager = overlayManager ?? OverlayManager()
         self.overlayManager = manager
+
+        let hintCoordinator = linkHintCoordinator ?? LinkHintCoordinator()
+        self.linkHintCoordinator = hintCoordinator
+        hintCoordinator.onExitHintMode = { [weak service] in
+            service?.exitHintMode()
+        }
 
         // Wire SafariObserver callbacks via a deferred closure so we can
         // reference `self` once init returns. The Bool flows through
@@ -95,6 +103,23 @@ final class AppModel: ObservableObject {
         service.onDismissOverlay = { [weak self] in
             Task { @MainActor in
                 self?.overlayManager.dismiss()
+                self?.linkHintCoordinator.cancel()
+            }
+        }
+        service.onRequestHints = { [weak self] openInNewTab, copyOnly, filter in
+            Task { @MainActor in
+                guard let self else { return }
+                self.linkHintCoordinator.start(
+                    openInNewTab: openInNewTab,
+                    copyOnly: copyOnly,
+                    filter: filter,
+                    alphabet: self.settings.hintAlphabet
+                )
+            }
+        }
+        service.onForwardHintKey = { [weak self] chars in
+            Task { @MainActor in
+                self?.linkHintCoordinator.handleKey(chars: chars)
             }
         }
 
@@ -167,6 +192,17 @@ final class AppModel: ObservableObject {
     func setInsertModeBehavior(_ behavior: InsertModeBehavior) {
         guard settings.insertModeBehavior != behavior else { return }
         settings.insertModeBehavior = behavior
+        settingsStore.save(settings)
+        eventTapService.updateSettings(settings)
+    }
+
+    func setHintAlphabet(_ alphabet: String) {
+        // Strip whitespace and case-normalize so the persisted value
+        // matches what `LinkHintEngine` consumes. Empty string falls back
+        // to the default alphabet inside the engine.
+        let normalized = alphabet.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard settings.hintAlphabet != normalized else { return }
+        settings.hintAlphabet = normalized
         settingsStore.save(settings)
         eventTapService.updateSettings(settings)
     }

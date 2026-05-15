@@ -4,13 +4,18 @@ import Foundation
 struct VimSettings: Equatable {
     var bindings: VimBindings
     var insertModeBehavior: InsertModeBehavior
+    /// Characters used to label hints in `f`/`F` mode. Empty string falls
+    /// back to `LinkHintEngine.defaultAlphabet` at session start.
+    var hintAlphabet: String
 
     init(
         bindings: VimBindings = .v1Default,
-        insertModeBehavior: InsertModeBehavior = .autoDetect
+        insertModeBehavior: InsertModeBehavior = .autoDetect,
+        hintAlphabet: String = LinkHintEngine.defaultAlphabet
     ) {
         self.bindings = bindings
         self.insertModeBehavior = insertModeBehavior
+        self.hintAlphabet = hintAlphabet
     }
 
     static let v1Default = VimSettings()

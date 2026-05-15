@@ -26,6 +26,8 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     private let onTapError: (String) -> Void
     private let onShowHelp: () -> Void
     private let onDismissOverlay: () -> Void
+    private let onRequestHints: (Bool, Bool, HintFilter) -> Void
+    private let onForwardHintKey: (String) -> Void
 
     private var thread: Thread?
     private var tapPort: CFMachPort?
@@ -40,13 +42,17 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         onModeChange: @escaping (VimMode) -> Void,
         onTapError: @escaping (String) -> Void,
         onShowHelp: @escaping () -> Void = {},
-        onDismissOverlay: @escaping () -> Void = {}
+        onDismissOverlay: @escaping () -> Void = {},
+        onRequestHints: @escaping (Bool, Bool, HintFilter) -> Void = { _, _, _ in },
+        onForwardHintKey: @escaping (String) -> Void = { _ in }
     ) {
         stateMachine = VimStateMachine(settings: settings)
         self.onModeChange = onModeChange
         self.onTapError = onTapError
         self.onShowHelp = onShowHelp
         self.onDismissOverlay = onDismissOverlay
+        self.onRequestHints = onRequestHints
+        self.onForwardHintKey = onForwardHintKey
     }
 
     func updateSettings(_ settings: VimSettings) {
@@ -71,6 +77,26 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         guard let thread else { return }
         let flag = BoolBox(value: isEditable)
         perform(#selector(updateFocusEditableOnThread(_:)), on: thread, with: flag, waitUntilDone: false)
+    }
+
+    /// Called by `LinkHintCoordinator` after a hint session ends (clicked,
+    /// copied, or cancelled). Steps the state machine back to `.normal`.
+    /// Safe to call from any thread; hops to the engine thread.
+    func exitHintMode() {
+        guard let thread else { return }
+        perform(#selector(exitHintModeOnThread), on: thread, with: nil, waitUntilDone: false)
+    }
+
+    @objc
+    private func exitHintModeOnThread() {
+        stateMachineLock.lock()
+        let decision = stateMachine.exitHintMode()
+        let mode = stateMachine.mode
+        stateMachineLock.unlock()
+
+        if decision != nil {
+            onModeChange(mode)
+        }
     }
 
     /// Idempotently re-enables the event tap on the engine thread. Safe to
@@ -291,13 +317,21 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             onDismissOverlay()
             return nil
 
+        case let .requestHintTraversal(openInNewTab, copyOnly, filter):
+            onRequestHints(openInNewTab, copyOnly, filter)
+            return nil
+
+        case let .forwardHintKey(chars):
+            onForwardHintKey(chars)
+            return nil
+
         case .unfocusActiveElement:
             // Post a plain Escape: Safari uses it to blur the focused field.
             postKey(virtualKey: VimKeyCode.escape, flags: [])
             return nil
 
         case .updateOverlay,
-             .requestHintTraversal, .dispatchHintClick,
+             .dispatchHintClick,
              .requestSafariURL, .requestBookmarks, .requestOpenTabs,
              .openURL, .copyToClipboard,
              .toggleSuspended, .showHelp:

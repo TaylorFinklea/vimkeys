@@ -40,6 +40,8 @@ final class EventTapService {
     var onTapRecovered: (() -> Void)?
     var onShowHelp: (() -> Void)?
     var onDismissOverlay: (() -> Void)?
+    var onRequestHints: ((Bool, Bool, HintFilter) -> Void)?
+    var onForwardHintKey: ((String) -> Void)?
 
     private let lock = NSLock()
     private var settings: VimSettings
@@ -74,6 +76,13 @@ final class EventTapService {
         engine?.updateFocusEditable(isEditable)
     }
 
+    func exitHintMode() {
+        lock.lock()
+        let engine = engine
+        lock.unlock()
+        engine?.exitHintMode()
+    }
+
     @discardableResult
     func start() -> Bool {
         stop()
@@ -96,6 +105,12 @@ final class EventTapService {
             },
             onDismissOverlay: { [weak self] in
                 self?.onDismissOverlay?()
+            },
+            onRequestHints: { [weak self] openInNewTab, copyOnly, filter in
+                self?.onRequestHints?(openInNewTab, copyOnly, filter)
+            },
+            onForwardHintKey: { [weak self] chars in
+                self?.onForwardHintKey?(chars)
             }
         )
         let started = engine.start()

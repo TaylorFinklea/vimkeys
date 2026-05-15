@@ -417,16 +417,14 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(decision.intent, .passThrough)
     }
 
-    /// Single-character bindings whose owning milestone (V-M3 / V-M4)
-    /// hasn't landed yet must still be defined in the catalog but resolve
-    /// to `.passThrough` — never silently consumed. V-M2 bindings (find /
-    /// history / reload / insert / help) are now wired and assert
-    /// elsewhere.
-    func testDecideForwardCompatBindingsPassThroughAtVM2() {
+    /// V-M4-only single-character bindings still resolve to `.passThrough`
+    /// at V-M3. V-M3 bindings (`f`, `F`) are tested in the hint-mode
+    /// section below.
+    func testDecideVM4ForwardCompatBindingsPassThroughAtVM3() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
 
-        for char in ["f", "F", "o", "O", "b", "B", "T", "p", "P"] {
+        for char in ["o", "O", "b", "B", "T", "p", "P"] {
             let decision = machine.decide(
                 eventType: .keyDown,
                 keyCode: 0x00,
@@ -435,7 +433,7 @@ final class VimStateMachineTests: XCTestCase {
                 timestamp: baseTimestamp
             )
             XCTAssertEqual(decision.intent, .passThrough,
-                           "V-M3/V-M4 char '\(char)' should pass through at V-M2")
+                           "V-M4 char '\(char)' should pass through at V-M3")
         }
     }
 
@@ -672,5 +670,105 @@ final class VimStateMachineTests: XCTestCase {
             XCTAssertEqual(machine.mode, .insert,
                            "Insert mode must not change on character keys")
         }
+    }
+
+    // MARK: - V-M3 hint-mode entry / forwarding / exit
+
+    func testDecideFEntersHintModeWithAnyClickable() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x03, characters: "f",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .requestHintTraversal(openInNewTab: false, copyOnly: false, filter: .anyClickable))
+        guard case .hint(let state) = machine.mode else {
+            return XCTFail("Expected .hint mode, got \(machine.mode)")
+        }
+        XCTAssertEqual(state.openInNewTab, false)
+        XCTAssertEqual(state.filter, .anyClickable)
+    }
+
+    func testDecideShiftFEntersHintModeWithNewTab() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x03, characters: "F",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .requestHintTraversal(openInNewTab: true, copyOnly: false, filter: .anyClickable))
+        guard case .hint(let state) = machine.mode else {
+            return XCTFail("Expected .hint mode, got \(machine.mode)")
+        }
+        XCTAssertEqual(state.openInNewTab, true)
+    }
+
+    func testDecideGIEntersHintModeForInputs() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x05, characters: "g",
+                           flags: [], timestamp: baseTimestamp)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x22, characters: "i",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .requestHintTraversal(openInNewTab: false, copyOnly: false, filter: .textInputsOnly))
+        guard case .hint(let state) = machine.mode else {
+            return XCTFail("Expected .hint mode, got \(machine.mode)")
+        }
+        XCTAssertEqual(state.filter, .textInputsOnly)
+    }
+
+    func testDecideGSPostsCmdOptionU() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x05, characters: "g",
+                           flags: [], timestamp: baseTimestamp)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x01, characters: "s",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.u, flags: [.maskCommand, .maskAlternate]))
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testDecideCharacterInHintModeForwardsToCoordinator() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x03, characters: "f",
+                           flags: [], timestamp: baseTimestamp)
+
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x01, characters: "s",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .forwardHintKey("s"))
+        guard case .hint = machine.mode else {
+            return XCTFail("Hint mode should persist while typing labels")
+        }
+    }
+
+    func testDecideEscInHintModeDismissesOverlay() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x03, characters: "f",
+                           flags: [], timestamp: baseTimestamp)
+
+        let esc = machine.decide(
+            eventType: .keyDown,
+            keyCode: VimKeyCode.escape,
+            characters: nil,
+            flags: [],
+            timestamp: baseTimestamp + 50_000_000
+        )
+        XCTAssertEqual(esc.intent, .dismissOverlay)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testExitHintModeReturnsToNormal() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x03, characters: "f",
+                           flags: [], timestamp: baseTimestamp)
+
+        let decision = machine.exitHintMode()
+        XCTAssertNotNil(decision)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    func testExitHintModeNoOpWhenAlreadyNormal() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        XCTAssertNil(machine.exitHintMode())
     }
 }

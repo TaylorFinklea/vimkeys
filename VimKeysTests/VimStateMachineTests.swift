@@ -489,12 +489,15 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.r, flags: .maskCommand))
     }
 
-    func testDecideShiftREmitsCmdShiftR() {
+    func testDecideShiftREmitsCmdOptionR() {
+        // Safari binds Cmd+Shift+R to "Show Reader" on macOS 14+, so we
+        // synthesize Cmd+Option+R (Develop menu's "Reload Page From
+        // Origin") for hard-reload semantics.
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
         let d = machine.decide(eventType: .keyDown, keyCode: 0x0F, characters: "R",
                                flags: .maskShift, timestamp: baseTimestamp)
-        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskShift]))
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskAlternate]))
     }
 
     func testDecideIEntersInsertMode() {

@@ -385,7 +385,13 @@ struct VimStateMachine {
         case .reload:
             return .postKey(virtualKey: VimKeyCode.r, flags: .maskCommand)
         case .hardReload:
-            return .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskShift])
+            // Safari binds Cmd+Shift+R to "Show Reader" on macOS 14+, so
+            // we synthesize Cmd+Option+R instead — that's Safari's
+            // Develop-menu "Reload Page From Origin" shortcut. Users must
+            // enable Develop menu (Settings → Advanced → Show features
+            // for web developers) for this to take effect; otherwise the
+            // chord is a no-op rather than triggering Reader Mode.
+            return .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskAlternate])
 
         // Mode-affecting commands handled by `resolveCommand`; never
         // reach here.

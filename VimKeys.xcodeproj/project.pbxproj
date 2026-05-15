@@ -13,6 +13,7 @@
 		145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */; };
 		19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004109781E456471EA923D53 /* MenuBarIconView.swift */; };
 		233EC0FDD4AF2C0FE6486471 /* USKeyboardLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */; };
+		256EC8ABD4596F84E62A5259 /* SafariBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4108153C9AF722A1FCC16B8F /* SafariBridge.swift */; };
 		25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */; };
 		271A12C9FF9A2195C1E313B6 /* HelpOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */; };
 		2FC0B88CD3E01789963DCEB5 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164FDFCFEBCBD4F6DA118795 /* SettingsStore.swift */; };
@@ -27,7 +28,9 @@
 		7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */; };
 		7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */; };
 		85DB839D20DA9EC340F6BBBF /* StatusMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */; };
+		8DB4853FBB289C68E5CC4D6E /* VomnibarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */; };
 		92BAE5C984A99769E4A08A82 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034AE2C7D5C982723685AA72 /* SettingsView.swift */; };
+		9DEADF1AEF0CEDAF8290A2B1 /* VomnibarWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */; };
 		B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */; };
 		C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D59CB50E2605937670B3A1C /* EventTapEngine.swift */; };
 		C3E978198846A7C234D21F3C /* VimSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F9A5BB959472464EFBE253 /* VimSettings.swift */; };
@@ -65,7 +68,9 @@
 		37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngineTests.swift; sourceTree = "<group>"; };
 		38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifier.swift; sourceTree = "<group>"; };
 		3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuView.swift; sourceTree = "<group>"; };
+		4108153C9AF722A1FCC16B8F /* SafariBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBridge.swift; sourceTree = "<group>"; };
 		4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HintOverlayWindow.swift; sourceTree = "<group>"; };
+		44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarWindow.swift; sourceTree = "<group>"; };
 		4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXLinkExtractor.swift; sourceTree = "<group>"; };
 		4D59CB50E2605937670B3A1C /* EventTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapEngine.swift; sourceTree = "<group>"; };
 		4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -82,6 +87,7 @@
 		A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayoutTests.swift; sourceTree = "<group>"; };
 		CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayManager.swift; sourceTree = "<group>"; };
+		D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,6 +108,7 @@
 				7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */,
 				4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */,
 				CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */,
+				44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */,
 			);
 			path = Overlays;
 			sourceTree = "<group>";
@@ -130,6 +137,7 @@
 				12FD49DCDC53D5540670E20F /* LinkHintEngine.swift */,
 				004109781E456471EA923D53 /* MenuBarIconView.swift */,
 				1B99829E68796F87CA56BC18 /* PermissionController.swift */,
+				4108153C9AF722A1FCC16B8F /* SafariBridge.swift */,
 				8D316DCF978DDD42EA98898E /* SafariObserver.swift */,
 				38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */,
 				3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */,
@@ -137,6 +145,7 @@
 				6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */,
 				63F9A5BB959472464EFBE253 /* VimSettings.swift */,
 				57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */,
+				D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */,
 				10533F23980E224C71FC4455 /* Overlays */,
 				948180F7D46918C467EAB0BC /* Persistence */,
 				B324E757EF9125B720148469 /* Settings */,
@@ -299,6 +308,7 @@
 				19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */,
 				D2218425E2081E51D03957AA /* OverlayManager.swift in Sources */,
 				037A599E2DF7CF12FE0D2FDB /* PermissionController.swift in Sources */,
+				256EC8ABD4596F84E62A5259 /* SafariBridge.swift in Sources */,
 				D5D89FF8B52361736F5BB5D7 /* SafariObserver.swift in Sources */,
 				492282F39E9367E6403EB8B5 /* SafariRoleClassifier.swift in Sources */,
 				2FC0B88CD3E01789963DCEB5 /* SettingsStore.swift in Sources */,
@@ -308,6 +318,8 @@
 				F96B50A1A1253FB0F0FE4654 /* VimKeysApp.swift in Sources */,
 				C3E978198846A7C234D21F3C /* VimSettings.swift in Sources */,
 				3BF71BBDA9A6C3E0CFEBD3C9 /* VimStateMachine.swift in Sources */,
+				8DB4853FBB289C68E5CC4D6E /* VomnibarCoordinator.swift in Sources */,
+				9DEADF1AEF0CEDAF8290A2B1 /* VomnibarWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -356,7 +368,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -374,7 +386,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 0.4.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -495,7 +507,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -507,7 +519,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 0.4.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

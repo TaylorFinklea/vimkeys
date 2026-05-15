@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		037A599E2DF7CF12FE0D2FDB /* PermissionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B99829E68796F87CA56BC18 /* PermissionController.swift */; };
+		08C26D4A732097EDC86E7889 /* LinkHintEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FD49DCDC53D5540670E20F /* LinkHintEngine.swift */; };
 		1410B4C19F0E740C36EA7140 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA9D65BC2F543890BC1F4BE0 /* Sparkle */; };
 		145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */; };
 		19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004109781E456471EA923D53 /* MenuBarIconView.swift */; };
@@ -23,14 +24,18 @@
 		581FEC85478083C73505E5D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */; };
 		5E7346DC55AC5BC150384642 /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DD44CB7ADCBF6AB9CDF258 /* KeyCatalog.swift */; };
 		6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */; };
+		7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */; };
 		7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */; };
 		85DB839D20DA9EC340F6BBBF /* StatusMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */; };
 		92BAE5C984A99769E4A08A82 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034AE2C7D5C982723685AA72 /* SettingsView.swift */; };
+		B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */; };
 		C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D59CB50E2605937670B3A1C /* EventTapEngine.swift */; };
 		C3E978198846A7C234D21F3C /* VimSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F9A5BB959472464EFBE253 /* VimSettings.swift */; };
 		D2218425E2081E51D03957AA /* OverlayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */; };
 		D3553166021422DD6FE16A64 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */; };
 		D5D89FF8B52361736F5BB5D7 /* SafariObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D316DCF978DDD42EA98898E /* SafariObserver.swift */; };
+		D9766F2EF69BD8227882F7EA /* HintOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */; };
+		F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */; };
 		F96B50A1A1253FB0F0FE4654 /* VimKeysApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */; };
 /* End PBXBuildFile section */
 
@@ -50,14 +55,18 @@
 		034AE2C7D5C982723685AA72 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCatalogTests.swift; sourceTree = "<group>"; };
 		12DD44CB7ADCBF6AB9CDF258 /* KeyCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCatalog.swift; sourceTree = "<group>"; };
+		12FD49DCDC53D5540670E20F /* LinkHintEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngine.swift; sourceTree = "<group>"; };
 		15020DE37358FED17B5191A5 /* VimKeysTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VimKeysTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginController.swift; sourceTree = "<group>"; };
 		164FDFCFEBCBD4F6DA118795 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		1B99829E68796F87CA56BC18 /* PermissionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionController.swift; sourceTree = "<group>"; };
 		20A92B62749BD7E48E714683 /* VimStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimStateMachineTests.swift; sourceTree = "<group>"; };
 		2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifierTests.swift; sourceTree = "<group>"; };
+		37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngineTests.swift; sourceTree = "<group>"; };
 		38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifier.swift; sourceTree = "<group>"; };
 		3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuView.swift; sourceTree = "<group>"; };
+		4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HintOverlayWindow.swift; sourceTree = "<group>"; };
+		4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXLinkExtractor.swift; sourceTree = "<group>"; };
 		4D59CB50E2605937670B3A1C /* EventTapEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapEngine.swift; sourceTree = "<group>"; };
 		4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4FC92EA860523A408A31F8AA /* VimKeys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VimKeys.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -66,6 +75,7 @@
 		6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimKeysApp.swift; sourceTree = "<group>"; };
 		63F9A5BB959472464EFBE253 /* VimSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimSettings.swift; sourceTree = "<group>"; };
 		7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpOverlayWindow.swift; sourceTree = "<group>"; };
+		81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintCoordinator.swift; sourceTree = "<group>"; };
 		8D316DCF978DDD42EA98898E /* SafariObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariObserver.swift; sourceTree = "<group>"; };
 		8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayout.swift; sourceTree = "<group>"; };
 		942AB09B3B5A4820F73B44E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -90,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */,
+				4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */,
 				CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */,
 			);
 			path = Overlays;
@@ -109,11 +120,14 @@
 			children = (
 				514129D1C8FA0A6FD0F6AD0E /* AppModel.swift */,
 				4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */,
+				4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */,
 				4D59CB50E2605937670B3A1C /* EventTapEngine.swift */,
 				01D5EC39F624E7E18B3A3D86 /* EventTapService.swift */,
 				942AB09B3B5A4820F73B44E7 /* Info.plist */,
 				12DD44CB7ADCBF6AB9CDF258 /* KeyCatalog.swift */,
 				15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */,
+				81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */,
+				12FD49DCDC53D5540670E20F /* LinkHintEngine.swift */,
 				004109781E456471EA923D53 /* MenuBarIconView.swift */,
 				1B99829E68796F87CA56BC18 /* PermissionController.swift */,
 				8D316DCF978DDD42EA98898E /* SafariObserver.swift */,
@@ -134,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */,
+				37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */,
 				2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */,
 				A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */,
 				B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */,
@@ -259,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */,
+				F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */,
 				25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */,
 				D3553166021422DD6FE16A64 /* SettingsStoreTests.swift in Sources */,
 				233EC0FDD4AF2C0FE6486471 /* USKeyboardLayoutTests.swift in Sources */,
@@ -270,12 +286,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */,
 				521A69AB58F6C0DD80586D67 /* AppModel.swift in Sources */,
 				C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */,
 				42DF4916F2EDA85F07135995 /* EventTapService.swift in Sources */,
 				271A12C9FF9A2195C1E313B6 /* HelpOverlayWindow.swift in Sources */,
+				D9766F2EF69BD8227882F7EA /* HintOverlayWindow.swift in Sources */,
 				5E7346DC55AC5BC150384642 /* KeyCatalog.swift in Sources */,
 				7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */,
+				B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */,
+				08C26D4A732097EDC86E7889 /* LinkHintEngine.swift in Sources */,
 				19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */,
 				D2218425E2081E51D03957AA /* OverlayManager.swift in Sources */,
 				037A599E2DF7CF12FE0D2FDB /* PermissionController.swift in Sources */,
@@ -336,7 +356,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -354,7 +374,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.2.3;
+				MARKETING_VERSION = 0.3.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -475,7 +495,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -487,7 +507,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.2.3;
+				MARKETING_VERSION = 0.3.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

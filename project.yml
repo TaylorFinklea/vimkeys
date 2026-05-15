@@ -5,8 +5,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 6.0
-    MARKETING_VERSION: 0.2.3
-    CURRENT_PROJECT_VERSION: 5
+    MARKETING_VERSION: 0.3.0
+    CURRENT_PROJECT_VERSION: 6
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -43,8 +43,8 @@ targets:
       path: VimKeys/Info.plist
       properties:
         CFBundleDisplayName: VimKeys
-        CFBundleShortVersionString: "0.2.3"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "0.3.0"
+        CFBundleVersion: "6"
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
         # Sparkle auto-update keys. The matching EdDSA private key is generated

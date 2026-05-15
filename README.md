@@ -1,42 +1,109 @@
 # VimKeys
 
-VimKeys is a macOS menu-bar app that adds vim-style home-row navigation to Safari. Active only when Safari is frontmost; gets out of the way everywhere else.
+VimKeys is a macOS menu-bar app that adds vim-style home-row navigation to
+Safari. Active only when Safari is frontmost; gets out of the way
+everywhere else. Inspired by Vimium (Chrome) and Vifari (Hammerspoon
+Spoon).
 
 ## Status
 
-Pre-release (v0.1, V-M1). Scroll bindings only — link hints, vomnibar, sites list, and signed releases land in subsequent milestones.
+`v0.5.0` — feature-complete for v1: scroll, find, history, reload,
+insert-mode auto-detect, link hints, vomnibar, paste-and-go, copy-URL,
+per-site disable. Pending V-M6 release infrastructure (Sparkle keypair,
+signed/notarized binaries on GitHub, Homebrew cask).
 
-## Defaults (V-M1)
+## Bindings
 
-When Safari is frontmost:
+When Safari is frontmost. Outside Safari, every key passes through.
 
-- `j` / `k` — scroll down / up (3 lines per press)
-- `h` / `l` — scroll left / right
-- `d` / `u` — half-page down / up
-- `gg` / `G` — top / bottom of page
-- A leading digit string (e.g. `5`, `12`) is a repeat count: `5j` scrolls down 5×.
+| Chord | Action |
+|---|---|
+| `j` / `k` / `h` / `l` | Scroll down / up / left / right (3 lines per press) |
+| `d` / `u` | Half-page down / up (~15 lines) |
+| `gg` / `G` | Top / bottom of page |
+| `<count>` | Repeat next motion: `5j` scrolls down 5× (capped at 999) |
+| `f` | Show hints, click on label match |
+| `F` | Show hints, open match in new tab (Cmd+click) |
+| `gi` | Focus first text input |
+| `gs` | View source (Cmd+Option+U, requires Develop menu) |
+| `/` / `n` / `N` | Find in page / next / previous |
+| `H` / `L` | History back / forward |
+| `r` / `R` | Reload / hard reload (Cmd+Option+R, requires Develop menu) |
+| `o` / `O` | Vomnibar URL / open in new tab |
+| `T` | Vomnibar tab switcher |
+| `yy` / `yf` | Copy current URL / copy link URL via hints |
+| `p` / `P` | Open clipboard URL in current / new tab |
+| `i` / `Esc` | Insert mode / leave insert mode |
+| `?` | Toggle help overlay |
 
-When Safari is not frontmost, every key passes through untouched.
+Settings → Bindings exposes the hint alphabet (default
+`sadfjkl;ehiwopvbnm`).
+Settings → Sites manages per-host disable rules — VimKeys silently
+passes every key through on hosts matching the list.
 
 ## Permissions
 
-- **Input Monitoring** — required, lets VimKeys read keys globally.
-- **Accessibility** — required, lets VimKeys post scroll events and synthesized keys.
+Three TCC scopes. All requested on first use.
 
-Apple Events permission (used by V-M4 vomnibar / clipboard bindings) is not yet wired.
+- **Input Monitoring** — read keys globally while Safari is frontmost.
+- **Accessibility** — post scroll events, classify focused-element type
+  for insert-mode auto-detect, traverse Safari's AX tree for link hints.
+- **Automation \u{2192} Safari** (Apple Events) — query URLs + tabs, set
+  tab URLs, switch tabs. Used by `yy`, `o`, `O`, `T`, `p`, `P`, `yf`,
+  and per-site disable URL polling.
 
-## Build locally
+After granting, restart VimKeys via the menu-bar dropdown so the global
+event tap picks up the new permission snapshot (the kernel binds it at
+tap-creation time).
+
+## Install
+
+A signed/notarized release will land via Homebrew once V-M6 ships. For
+now, build locally:
+
+```bash
+brew install xcodegen
+git clone https://github.com/TaylorFinklea/vimkeys
+cd vimkeys
+xcodegen generate
+xcodebuild build -scheme VimKeys -project VimKeys.xcodeproj \
+  -configuration Release -destination 'platform=macOS'
+ditto $(xcodebuild -scheme VimKeys -showBuildSettings -configuration Release \
+  | awk '/ BUILT_PRODUCTS_DIR =/ {print $3}')/VimKeys.app /Applications/VimKeys.app
+```
+
+## Build + test
 
 ```bash
 xcodegen generate
-xcodebuild test -scheme VimKeys -project VimKeys.xcodeproj -destination 'platform=macOS'
-xcodebuild build -scheme VimKeys -project VimKeys.xcodeproj -configuration Release -destination 'platform=macOS'
+xcodebuild test -scheme VimKeys -project VimKeys.xcodeproj \
+  -destination 'platform=macOS'
 ```
 
-The Xcode project is generated from `project.yml` via [XcodeGen](https://github.com/yonaskolb/XcodeGen) (Swift 6, macOS 14+). Edit `project.yml` rather than the `.xcodeproj` when changing targets, build settings, or sources.
+The Xcode project is generated from `project.yml` via
+[XcodeGen](https://github.com/yonaskolb/XcodeGen) (Swift 6, macOS 14+).
+Edit `project.yml` rather than the `.xcodeproj`.
 
-Manual smoke-test checklist for V-M1: `docs/manual-tests/v0.1-smoke.md`.
+Manual smoke-test checklists live under `docs/manual-tests/`, one per
+milestone.
+
+## Release pipeline
+
+`scripts/package_release.sh` builds unsigned, signs with the local
+Developer ID Application identity, notarises via `xcrun notarytool`,
+staples the ticket, and emits `dist/VimKeys.zip` + `.sha256`.
+
+`scripts/update_homebrew_tap.sh` writes a `vimkeys.rb` cask into
+`../homebrew-tap/Casks/`.
+
+CI under `.github/workflows/release.yml` runs both on tag push. Secrets
+required:
+
+- `APPLE_DEVID_CERT_P12_BASE64`, `APPLE_DEVID_CERT_PASSWORD`
+- `NOTARY_APPLE_ID`, `NOTARY_PASSWORD`, `NOTARY_TEAM_ID`
+- `SPARKLE_EDDSA_PRIVATE_KEY` (matching `SUPublicEDKey` in
+  `VimKeys/Info.plist`)
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see `LICENSE`. Copyright Taylor Finklea 2026.

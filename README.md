@@ -7,10 +7,11 @@ Spoon).
 
 ## Status
 
-`v0.5.0` — feature-complete for v1: scroll, find, history, reload,
-insert-mode auto-detect, link hints, vomnibar, paste-and-go, copy-URL,
-per-site disable. Pending V-M6 release infrastructure (Sparkle keypair,
-signed/notarized binaries on GitHub, Homebrew cask).
+`v0.6.0` — feature-complete for v1: scroll, find, history, reload,
+insert-mode auto-detect, link hints, vomnibar (URL / tabs / bookmarks),
+paste-and-go, copy-URL, per-site disable, Esc-Esc session suspend,
+layout-aware keyboard resolution. Pending V-M6 release infrastructure
+(Sparkle keypair, signed/notarized binaries on GitHub, Homebrew cask).
 
 ## Bindings
 
@@ -31,8 +32,10 @@ When Safari is frontmost. Outside Safari, every key passes through.
 | `r` / `R` | Reload / hard reload (Cmd+Option+R, requires Develop menu) |
 | `o` / `O` | Vomnibar URL / open in new tab |
 | `T` | Vomnibar tab switcher |
+| `b` / `B` | Bookmark vomnibar / open in new tab (requires Full Disk Access) |
 | `yy` / `yf` | Copy current URL / copy link URL via hints |
 | `p` / `P` | Open clipboard URL in current / new tab |
+| `Esc Esc` | Toggle session suspend on the current URL (cleared on navigation) |
 | `i` / `Esc` | Insert mode / leave insert mode |
 | `?` | Toggle help overlay |
 
@@ -51,6 +54,10 @@ Three TCC scopes. All requested on first use.
 - **Automation \u{2192} Safari** (Apple Events) — query URLs + tabs, set
   tab URLs, switch tabs. Used by `yy`, `o`, `O`, `T`, `p`, `P`, `yf`,
   and per-site disable URL polling.
+- **Full Disk Access** (optional) — only needed for `b` / `B` bookmark
+  vomnibar, which reads `~/Library/Safari/Bookmarks.plist`. macOS
+  doesn't prompt automatically; add VimKeys at System Settings \u{2192}
+  Privacy & Security \u{2192} Full Disk Access.
 
 After granting, restart VimKeys via the menu-bar dropdown so the global
 event tap picks up the new permission snapshot (the kernel binds it at

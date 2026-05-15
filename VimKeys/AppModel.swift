@@ -250,6 +250,11 @@ final class AppModel: ObservableObject {
     func refreshPermissionState() {
         permissionState = PermissionController.currentState()
         accessibilityGranted = PermissionController.hasPostEventAccess
+        // AX trust may have flipped since the last workspace notification —
+        // poke SafariObserver so the AX focus observer reconciles. Without
+        // this, granting Accessibility while Safari is already frontmost
+        // leaves the focus observer detached until the next Cmd-Tab.
+        safariObserver.refresh()
     }
 
     func restartEventTap() {

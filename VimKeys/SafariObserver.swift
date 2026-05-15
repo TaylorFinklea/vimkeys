@@ -101,18 +101,25 @@ final class SafariObserver {
     }
 
     /// Re-reads the frontmost application and emits a change iff the
-    /// Safari-or-not value flipped since the last report. Also attaches /
-    /// detaches the AX focus observer in lockstep with frontmost state.
-    private func refresh() {
+    /// Safari-or-not value flipped since the last report. AX-observer
+    /// reconciliation runs unconditionally on every refresh: AX trust can
+    /// be granted between workspace notifications, so we must (re)attach
+    /// without waiting for a frontmost transition. Callable externally
+    /// when the caller has reason to suspect AX trust changed.
+    func refresh() {
         let isFrontmost = Self.isSafariFrontmost()
-        guard isFrontmost != lastReportedFrontmost else { return }
-        lastReportedFrontmost = isFrontmost
-        onFrontmostChange(isFrontmost)
+
         if isFrontmost {
-            attachAXFocusObserverIfPossible()
+            if axFocusObserver == nil {
+                attachAXFocusObserverIfPossible()
+            }
         } else {
             detachAXFocusObserver()
         }
+
+        guard isFrontmost != lastReportedFrontmost else { return }
+        lastReportedFrontmost = isFrontmost
+        onFrontmostChange(isFrontmost)
     }
 
     private func attachAXFocusObserverIfPossible() {

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		037A599E2DF7CF12FE0D2FDB /* PermissionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B99829E68796F87CA56BC18 /* PermissionController.swift */; };
 		08C26D4A732097EDC86E7889 /* LinkHintEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FD49DCDC53D5540670E20F /* LinkHintEngine.swift */; };
+		08DF777457F9B98F206B81F3 /* SitesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733859216D77D02BFEEFD8C2 /* SitesStoreTests.swift */; };
 		1410B4C19F0E740C36EA7140 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA9D65BC2F543890BC1F4BE0 /* Sparkle */; };
 		145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */; };
 		19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004109781E456471EA923D53 /* MenuBarIconView.swift */; };
@@ -25,6 +26,7 @@
 		581FEC85478083C73505E5D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */; };
 		5E7346DC55AC5BC150384642 /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DD44CB7ADCBF6AB9CDF258 /* KeyCatalog.swift */; };
 		6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */; };
+		679926D748503FB62A04AE3A /* SitesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */; };
 		7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */; };
 		7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */; };
 		85DB839D20DA9EC340F6BBBF /* StatusMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */; };
@@ -68,6 +70,7 @@
 		37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngineTests.swift; sourceTree = "<group>"; };
 		38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifier.swift; sourceTree = "<group>"; };
 		3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuView.swift; sourceTree = "<group>"; };
+		3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesStore.swift; sourceTree = "<group>"; };
 		4108153C9AF722A1FCC16B8F /* SafariBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBridge.swift; sourceTree = "<group>"; };
 		4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HintOverlayWindow.swift; sourceTree = "<group>"; };
 		44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarWindow.swift; sourceTree = "<group>"; };
@@ -79,6 +82,7 @@
 		57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimStateMachine.swift; sourceTree = "<group>"; };
 		6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimKeysApp.swift; sourceTree = "<group>"; };
 		63F9A5BB959472464EFBE253 /* VimSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimSettings.swift; sourceTree = "<group>"; };
+		733859216D77D02BFEEFD8C2 /* SitesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesStoreTests.swift; sourceTree = "<group>"; };
 		7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpOverlayWindow.swift; sourceTree = "<group>"; };
 		81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintCoordinator.swift; sourceTree = "<group>"; };
 		8D316DCF978DDD42EA98898E /* SafariObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariObserver.swift; sourceTree = "<group>"; };
@@ -160,6 +164,7 @@
 				37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */,
 				2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */,
 				A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */,
+				733859216D77D02BFEEFD8C2 /* SitesStoreTests.swift */,
 				B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */,
 				20A92B62749BD7E48E714683 /* VimStateMachineTests.swift */,
 			);
@@ -170,6 +175,7 @@
 			isa = PBXGroup;
 			children = (
 				164FDFCFEBCBD4F6DA118795 /* SettingsStore.swift */,
+				3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -286,6 +292,7 @@
 				F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */,
 				25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */,
 				D3553166021422DD6FE16A64 /* SettingsStoreTests.swift in Sources */,
+				08DF777457F9B98F206B81F3 /* SitesStoreTests.swift in Sources */,
 				233EC0FDD4AF2C0FE6486471 /* USKeyboardLayoutTests.swift in Sources */,
 				41C3903DC6EADB47FFDF37FE /* VimStateMachineTests.swift in Sources */,
 			);
@@ -313,6 +320,7 @@
 				492282F39E9367E6403EB8B5 /* SafariRoleClassifier.swift in Sources */,
 				2FC0B88CD3E01789963DCEB5 /* SettingsStore.swift in Sources */,
 				92BAE5C984A99769E4A08A82 /* SettingsView.swift in Sources */,
+				679926D748503FB62A04AE3A /* SitesStore.swift in Sources */,
 				85DB839D20DA9EC340F6BBBF /* StatusMenuView.swift in Sources */,
 				6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */,
 				F96B50A1A1253FB0F0FE4654 /* VimKeysApp.swift in Sources */,

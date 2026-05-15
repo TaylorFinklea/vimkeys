@@ -7,7 +7,10 @@ final class SettingsStoreTests: XCTestCase {
     private var defaults: UserDefaults!
 
     override func setUp() async throws {
-        try await super.setUp()
+        // Skipping `super.setUp()` on purpose: under Swift 6 strict mode
+        // the `super` reference is non-Sendable, so awaiting through it
+        // is a data-race risk. XCTestCase's base setUp is a no-op, so
+        // skipping is safe.
         suiteName = "VimKeysTests.SettingsStore.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)
         defaults.removePersistentDomain(forName: suiteName)
@@ -16,7 +19,6 @@ final class SettingsStoreTests: XCTestCase {
     override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
         defaults = nil
-        try await super.tearDown()
     }
 
     func testLoadReturnsDefaultsWhenNothingPersisted() {

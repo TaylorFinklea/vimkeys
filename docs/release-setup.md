@@ -1,52 +1,44 @@
 # V-M6 release setup
 
-Everything in this document is a one-time user action. After completing
-it, every `git tag v0.x.y && git push --tags` triggers a signed,
-notarised, Sparkle-signed GitHub release.
+**Current state (post v0.6.0):**
+
+- GitHub repo: `github.com/TaylorFinklea/vimkeys` — exists, main pushed.
+- Homebrew tap: `github.com/TaylorFinklea/homebrew-tap/Casks/vimkeys.rb` — exists.
+- Sparkle EdDSA keypair: **shared with LayerKeys** (same public key
+  `l2ghc9Y6kQcCddTEo6oRIJ2KL3rrE1ji/Xz+i9bme70=`, same private key
+  in the login keychain). Updates to either app are signed by the same
+  keypair.
+- First release: v0.6.0, signed + notarised + stapled, published via
+  the manual local path (`scripts/package_release.sh` →
+  `gh release create`).
+
+Everything below describes the remaining setup needed to make
+**tag-triggered CI releases** work. Until those secrets land, you can
+keep cutting releases manually via the steps in the "Manual release"
+section at the bottom.
 
 ## 1. GitHub repo
+
+Already created. If you ever rebuild from scratch:
 
 ```bash
 gh repo create TaylorFinklea/vimkeys --public --source=. --remote=origin
 git push -u origin main
 ```
 
-Mirror the side repo for the Homebrew cask:
+The Homebrew tap (`TaylorFinklea/homebrew-tap`) is also already set up;
+the cask emitter writes into `../homebrew-tap/Casks/vimkeys.rb`.
 
-```bash
-gh repo create TaylorFinklea/homebrew-tap --public
-# Clone it as a sibling directory; the release script writes
-# ../homebrew-tap/Casks/vimkeys.rb relative to vimkeys/.
-git clone https://github.com/TaylorFinklea/homebrew-tap ../homebrew-tap
-```
+## 2. Sparkle EdDSA keypair (already wired)
 
-## 2. Generate the Sparkle EdDSA keypair
+VimKeys reuses LayerKeys' keypair so the private key already lives in
+your login keychain. No new generation needed. If you ever want a
+separate keypair, run Sparkle's `generate_keys` (ships at
+`~/Library/Developer/Xcode/DerivedData/VimKeys-*/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys`)
+and update both `VimKeys/Info.plist` and `project.yml` with the new
+`SUPublicEDKey`.
 
-Sparkle's `generate_keys` lives inside the Sparkle SPM checkout under
-`~/Library/Developer/Xcode/DerivedData/.../SourcePackages/checkouts/Sparkle/bin/generate_keys`,
-or — more reliably — download the matching Sparkle release tarball:
-
-```bash
-SPARKLE_VERSION=2.9.1
-curl -fsSL \
-  "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
-  | tar -xJ -C /tmp
-/tmp/bin/generate_keys
-```
-
-This stores the private key in your login keychain under the label
-`https://sparkle-project.org/keys/`. The public key prints to stdout.
-
-Copy the public key into `VimKeys/Info.plist` AND `project.yml`:
-
-```xml
-<key>SUPublicEDKey</key>
-<string>YOUR_PUBLIC_KEY_BASE64_HERE</string>
-```
-
-Flip `SUEnableAutomaticChecks` to `true` in both files. Commit.
-
-Export the **private** key for CI:
+To extract the private key for the GitHub Actions secret:
 
 ```bash
 security find-generic-password \
@@ -55,8 +47,7 @@ security find-generic-password \
   -w
 ```
 
-Copy the printed key — that's the value of the `SPARKLE_EDDSA_PRIVATE_KEY`
-secret below.
+That's the value of `SPARKLE_EDDSA_PRIVATE_KEY`.
 
 ## 3. Apple Developer certs
 
@@ -101,42 +92,61 @@ In the vimkeys repo → Settings → Secrets and variables → Actions, add:
 | `NOTARY_TEAM_ID` | `K7CBQW6MPG` |
 | `SPARKLE_EDDSA_PRIVATE_KEY` | the private key from step 2 |
 
-## 6. Cut the first release
+## 6. Cut a release via CI (after secrets are set)
 
 ```bash
-git tag v0.5.0
-git push origin v0.5.0
+git tag v0.7.0
+git push origin v0.7.0
 ```
 
-GitHub Actions runs `.github/workflows/release.yml`. On success the
-release page at `https://github.com/TaylorFinklea/vimkeys/releases/tag/v0.5.0`
-contains `VimKeys.zip` (signed, notarised, stapled) and `appcast.xml`
-(Sparkle update feed).
+`.github/workflows/release.yml` builds, signs, notarises, signs the
+Sparkle appcast, and publishes a GitHub release with `VimKeys.zip` +
+`appcast.xml` attached.
 
-## 7. Publish the Homebrew cask
+## 7. Publish the Homebrew cask (only re-run for new versions)
 
 ```bash
-./scripts/package_release.sh        # only if you didn't already run CI
 ./scripts/update_homebrew_tap.sh
 cd ../homebrew-tap
 git add Casks/vimkeys.rb
-git commit -m "Update vimkeys to 0.5.0"
+git commit -m "Update vimkeys to <version>"
 git push
 ```
 
-Users then install via:
+Users install via:
 
 ```bash
 brew tap TaylorFinklea/tap
 brew install --cask vimkeys
 ```
 
+## Manual release (works today, no CI secrets needed)
+
+Until the CI secrets are set, this is the canonical path for cutting a
+release:
+
+```bash
+NOTARY_KEYCHAIN_PROFILE=layerkeys-notarytool ./scripts/package_release.sh
+SPARKLE_BIN=~/Library/Developer/Xcode/DerivedData/VimKeys-*/SourcePackages/artifacts/sparkle/Sparkle/bin
+"$SPARKLE_BIN"/generate_appcast \
+  --download-url-prefix "https://github.com/TaylorFinklea/vimkeys/releases/download/v$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' VimKeys/Info.plist)/" \
+  -o dist/appcast.xml \
+  dist/
+gh release create "v$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' VimKeys/Info.plist)" \
+  dist/VimKeys.zip dist/appcast.xml --generate-notes
+./scripts/update_homebrew_tap.sh
+cd ../homebrew-tap
+git add Casks/vimkeys.rb
+git commit -m "Update vimkeys to $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' ../vimkeys/VimKeys/Info.plist)"
+git push
+```
+
 ## Subsequent releases
 
 Bump `MARKETING_VERSION` + `CURRENT_PROJECT_VERSION` in `project.yml`
-(and matching keys in `VimKeys/Info.plist`). Regenerate the Xcode
-project, commit, tag, push tag, and re-run the homebrew tap update
-script after CI publishes the release.
+and `CFBundleShortVersionString` + `CFBundleVersion` in `VimKeys/Info.plist`.
+Regenerate the Xcode project, commit, then either tag-push (CI) or run
+the manual flow above.
 
 ## Local dry run
 

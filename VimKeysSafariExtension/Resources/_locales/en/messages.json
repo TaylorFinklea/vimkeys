@@ -1,0 +1,8 @@
+{
+  "extension_name": {
+    "message": "VimKeys Bookmark Sync"
+  },
+  "extension_description": {
+    "message": "Syncs Safari bookmarks to VimKeys for fuzzy-search via the b/B vomnibar. Read-only; bookmarks themselves are never modified."
+  }
+}

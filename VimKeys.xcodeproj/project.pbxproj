@@ -17,16 +17,21 @@
 		256EC8ABD4596F84E62A5259 /* SafariBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4108153C9AF722A1FCC16B8F /* SafariBridge.swift */; };
 		25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */; };
 		271A12C9FF9A2195C1E313B6 /* HelpOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */; };
+		292ECE01E5D8CD10C8960E0F /* messages.json in Resources */ = {isa = PBXBuildFile; fileRef = A5743CBB19BACF4AEF064DDF /* messages.json */; };
 		2FC0B88CD3E01789963DCEB5 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164FDFCFEBCBD4F6DA118795 /* SettingsStore.swift */; };
+		388DC58E60E27E5ABC39147A /* SafariBookmarksJSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B432B714509F3EBD49D08C3 /* SafariBookmarksJSONTests.swift */; };
 		3BF71BBDA9A6C3E0CFEBD3C9 /* VimStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */; };
 		41C3903DC6EADB47FFDF37FE /* VimStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20A92B62749BD7E48E714683 /* VimStateMachineTests.swift */; };
+		424496C7BB84AC0F168358B3 /* toolbar-icon-48.png in Resources */ = {isa = PBXBuildFile; fileRef = 8AE092636234B85CB940E5B6 /* toolbar-icon-48.png */; };
 		42DF4916F2EDA85F07135995 /* EventTapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D5EC39F624E7E18B3A3D86 /* EventTapService.swift */; };
 		492282F39E9367E6403EB8B5 /* SafariRoleClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */; };
+		4BEF66C41C976A864A497E1F /* VimKeysSafariExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2B7F8AF7A15A5241847BA371 /* VimKeysSafariExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		521A69AB58F6C0DD80586D67 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 514129D1C8FA0A6FD0F6AD0E /* AppModel.swift */; };
 		581FEC85478083C73505E5D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */; };
 		5E7346DC55AC5BC150384642 /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DD44CB7ADCBF6AB9CDF258 /* KeyCatalog.swift */; };
 		6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */; };
 		679926D748503FB62A04AE3A /* SitesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */; };
+		6877F1519B66565AB0324D74 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 285E62FD17E566A4BCF0A2DF /* background.js */; };
 		79EA3109B68EB6F24E904A6D /* BookmarksStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */; };
 		7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */; };
 		7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */; };
@@ -34,9 +39,12 @@
 		85DB839D20DA9EC340F6BBBF /* StatusMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */; };
 		8DB4853FBB289C68E5CC4D6E /* VomnibarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */; };
 		92BAE5C984A99769E4A08A82 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034AE2C7D5C982723685AA72 /* SettingsView.swift */; };
+		944BE4E1305008D67BBAF0DE /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33234ACF42636EAD98F2BC69 /* SafariWebExtensionHandler.swift */; };
+		9755B5E5BBC4F7D5777BE563 /* toolbar-icon-96.png in Resources */ = {isa = PBXBuildFile; fileRef = 51D6D6F6BD470A38C9015E3D /* toolbar-icon-96.png */; };
 		9DEADF1AEF0CEDAF8290A2B1 /* VomnibarWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */; };
 		B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */; };
 		C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D59CB50E2605937670B3A1C /* EventTapEngine.swift */; };
+		C34E482F7A33D12A089F198B /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = F92DFCA0F6060F895949E212 /* manifest.json */; };
 		C3E978198846A7C234D21F3C /* VimSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F9A5BB959472464EFBE253 /* VimSettings.swift */; };
 		CA6A1DABCD38EB44F6DA0369 /* SafariBookmarks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1368746B58D900849CEC8E /* SafariBookmarks.swift */; };
 		D2218425E2081E51D03957AA /* OverlayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */; };
@@ -57,7 +65,28 @@
 			remoteGlobalIDString = FB8687E2611B9DF5A4A5B89C;
 			remoteInfo = VimKeys;
 		};
+		B51FFECDF199003A5BB5A2F6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A823DE2C407477C37625B01C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 59D766B6123EF513457F4D2F;
+			remoteInfo = VimKeysSafariExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5939E40BA197EE7E35678084 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4BEF66C41C976A864A497E1F /* VimKeysSafariExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		004109781E456471EA923D53 /* MenuBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarIconView.swift; sourceTree = "<group>"; };
@@ -72,10 +101,14 @@
 		1A436DBB67699499A37E5C9D /* KeyboardLayoutCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayoutCache.swift; sourceTree = "<group>"; };
 		1B99829E68796F87CA56BC18 /* PermissionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionController.swift; sourceTree = "<group>"; };
 		20A92B62749BD7E48E714683 /* VimStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimStateMachineTests.swift; sourceTree = "<group>"; };
+		285E62FD17E566A4BCF0A2DF /* background.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = background.js; sourceTree = "<group>"; };
+		2B7F8AF7A15A5241847BA371 /* VimKeysSafariExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VimKeysSafariExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifierTests.swift; sourceTree = "<group>"; };
+		33234ACF42636EAD98F2BC69 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
 		37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngineTests.swift; sourceTree = "<group>"; };
 		38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifier.swift; sourceTree = "<group>"; };
 		3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuView.swift; sourceTree = "<group>"; };
+		3B432B714509F3EBD49D08C3 /* SafariBookmarksJSONTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarksJSONTests.swift; sourceTree = "<group>"; };
 		3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksStoreTests.swift; sourceTree = "<group>"; };
 		3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesStore.swift; sourceTree = "<group>"; };
 		4108153C9AF722A1FCC16B8F /* SafariBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBridge.swift; sourceTree = "<group>"; };
@@ -86,21 +119,27 @@
 		4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4FC92EA860523A408A31F8AA /* VimKeys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VimKeys.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		514129D1C8FA0A6FD0F6AD0E /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		51D6D6F6BD470A38C9015E3D /* toolbar-icon-96.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-96.png"; sourceTree = "<group>"; };
 		57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimStateMachine.swift; sourceTree = "<group>"; };
 		5E8FF24F6720B9B25FD71145 /* SafariBookmarksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarksTests.swift; sourceTree = "<group>"; };
 		6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimKeysApp.swift; sourceTree = "<group>"; };
 		63F9A5BB959472464EFBE253 /* VimSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimSettings.swift; sourceTree = "<group>"; };
+		6ACA3EA84FB1D55F90624622 /* VimKeys.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VimKeys.entitlements; sourceTree = "<group>"; };
 		733859216D77D02BFEEFD8C2 /* SitesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesStoreTests.swift; sourceTree = "<group>"; };
 		7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpOverlayWindow.swift; sourceTree = "<group>"; };
 		81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintCoordinator.swift; sourceTree = "<group>"; };
+		8AE092636234B85CB940E5B6 /* toolbar-icon-48.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-48.png"; sourceTree = "<group>"; };
 		8D316DCF978DDD42EA98898E /* SafariObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariObserver.swift; sourceTree = "<group>"; };
 		8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayout.swift; sourceTree = "<group>"; };
 		942AB09B3B5A4820F73B44E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9A1368746B58D900849CEC8E /* SafariBookmarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarks.swift; sourceTree = "<group>"; };
+		A5743CBB19BACF4AEF064DDF /* messages.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = messages.json; sourceTree = "<group>"; };
 		A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayoutTests.swift; sourceTree = "<group>"; };
 		CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayManager.swift; sourceTree = "<group>"; };
 		D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarCoordinator.swift; sourceTree = "<group>"; };
+		EE2AE4CD7D8F739F2F8EC9B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F92DFCA0F6060F895949E212 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
 		FA3D85A43BD21955E57C62E7 /* BookmarksStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -127,10 +166,48 @@
 			path = Overlays;
 			sourceTree = "<group>";
 		};
+		1166973C8C10426CBE0D6DA5 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				285E62FD17E566A4BCF0A2DF /* background.js */,
+				F92DFCA0F6060F895949E212 /* manifest.json */,
+				11A6C287AE432EC1E2E91392 /* _locales */,
+				8C8C699746B6243AAD8A7EE4 /* images */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		11A6C287AE432EC1E2E91392 /* _locales */ = {
+			isa = PBXGroup;
+			children = (
+				5DE98FC2B211550AC4286E22 /* en */,
+			);
+			path = _locales;
+			sourceTree = "<group>";
+		};
+		480A80B1160951E4F0CF4FFC /* VimKeysSafariExtension */ = {
+			isa = PBXGroup;
+			children = (
+				EE2AE4CD7D8F739F2F8EC9B1 /* Info.plist */,
+				33234ACF42636EAD98F2BC69 /* SafariWebExtensionHandler.swift */,
+				1166973C8C10426CBE0D6DA5 /* Resources */,
+			);
+			path = VimKeysSafariExtension;
+			sourceTree = "<group>";
+		};
+		5DE98FC2B211550AC4286E22 /* en */ = {
+			isa = PBXGroup;
+			children = (
+				A5743CBB19BACF4AEF064DDF /* messages.json */,
+			);
+			path = en;
+			sourceTree = "<group>";
+		};
 		658C5A760474DCB453078D22 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				4FC92EA860523A408A31F8AA /* VimKeys.app */,
+				2B7F8AF7A15A5241847BA371 /* VimKeysSafariExtension.appex */,
 				15020DE37358FED17B5191A5 /* VimKeysTests.xctest */,
 			);
 			name = Products;
@@ -159,6 +236,7 @@
 				38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */,
 				3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */,
 				8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */,
+				6ACA3EA84FB1D55F90624622 /* VimKeys.entitlements */,
 				6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */,
 				63F9A5BB959472464EFBE253 /* VimSettings.swift */,
 				57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */,
@@ -170,12 +248,22 @@
 			path = VimKeys;
 			sourceTree = "<group>";
 		};
+		8C8C699746B6243AAD8A7EE4 /* images */ = {
+			isa = PBXGroup;
+			children = (
+				8AE092636234B85CB940E5B6 /* toolbar-icon-48.png */,
+				51D6D6F6BD470A38C9015E3D /* toolbar-icon-96.png */,
+			);
+			path = images;
+			sourceTree = "<group>";
+		};
 		93C7BF5A9FD5BEC6DDF0CD8B /* VimKeysTests */ = {
 			isa = PBXGroup;
 			children = (
 				3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */,
 				0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */,
 				37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */,
+				3B432B714509F3EBD49D08C3 /* SafariBookmarksJSONTests.swift */,
 				5E8FF24F6720B9B25FD71145 /* SafariBookmarksTests.swift */,
 				2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */,
 				A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */,
@@ -207,6 +295,7 @@
 			isa = PBXGroup;
 			children = (
 				87940F9E4CFFF6CA4938C514 /* VimKeys */,
+				480A80B1160951E4F0CF4FFC /* VimKeysSafariExtension */,
 				93C7BF5A9FD5BEC6DDF0CD8B /* VimKeysTests */,
 				658C5A760474DCB453078D22 /* Products */,
 			);
@@ -215,6 +304,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		59D766B6123EF513457F4D2F /* VimKeysSafariExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8E0A51BC3C7C8DA5B89A8455 /* Build configuration list for PBXNativeTarget "VimKeysSafariExtension" */;
+			buildPhases = (
+				537206EC87ED2E31454DB54B /* Sources */,
+				87AE01B13206FBBF42EB3789 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VimKeysSafariExtension;
+			packageProductDependencies = (
+			);
+			productName = VimKeysSafariExtension;
+			productReference = 2B7F8AF7A15A5241847BA371 /* VimKeysSafariExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		807BAA65285845B8530F1E1D /* VimKeysTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 485615939BCD33B9A0112145 /* Build configuration list for PBXNativeTarget "VimKeysTests" */;
@@ -240,10 +347,12 @@
 				32079988051737F50F654D4F /* Sources */,
 				DC853495F08B498528F8B122 /* Resources */,
 				891954214CE8DC325418AB44 /* Frameworks */,
+				5939E40BA197EE7E35678084 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D1A9BD9E9E912397412116FE /* PBXTargetDependency */,
 			);
 			name = VimKeys;
 			packageProductDependencies = (
@@ -282,12 +391,25 @@
 			projectRoot = "";
 			targets = (
 				FB8687E2611B9DF5A4A5B89C /* VimKeys */,
+				59D766B6123EF513457F4D2F /* VimKeysSafariExtension */,
 				807BAA65285845B8530F1E1D /* VimKeysTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		87AE01B13206FBBF42EB3789 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6877F1519B66565AB0324D74 /* background.js in Resources */,
+				C34E482F7A33D12A089F198B /* manifest.json in Resources */,
+				292ECE01E5D8CD10C8960E0F /* messages.json in Resources */,
+				424496C7BB84AC0F168358B3 /* toolbar-icon-48.png in Resources */,
+				9755B5E5BBC4F7D5777BE563 /* toolbar-icon-96.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DC853495F08B498528F8B122 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -306,6 +428,7 @@
 				79EA3109B68EB6F24E904A6D /* BookmarksStoreTests.swift in Sources */,
 				145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */,
 				F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */,
+				388DC58E60E27E5ABC39147A /* SafariBookmarksJSONTests.swift in Sources */,
 				F3BBA4DA1D2008B48CF65B5D /* SafariBookmarksTests.swift in Sources */,
 				25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */,
 				D3553166021422DD6FE16A64 /* SettingsStoreTests.swift in Sources */,
@@ -351,6 +474,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		537206EC87ED2E31454DB54B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				944BE4E1305008D67BBAF0DE /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -358,6 +489,11 @@
 			isa = PBXTargetDependency;
 			target = FB8687E2611B9DF5A4A5B89C /* VimKeys */;
 			targetProxy = 03C853A1004102E670A82E6F /* PBXContainerItemProxy */;
+		};
+		D1A9BD9E9E912397412116FE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 59D766B6123EF513457F4D2F /* VimKeysSafariExtension */;
+			targetProxy = B51FFECDF199003A5BB5A2F6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -396,7 +532,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -414,7 +550,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.6.2;
+				MARKETING_VERSION = 0.7.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -425,6 +561,50 @@
 				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
+		};
+		299A309D9AE0B514FC661F88 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VimKeysSafariExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.taylorfinklea.vimkeys.SafariExtension;
+				PRODUCT_NAME = VimKeysSafariExtension;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		2C68B74B6FC3F299C5A4CDB3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = VimKeysSafariExtension/VimKeysSafariExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = K7CBQW6MPG;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VimKeysSafariExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				OTHER_CODE_SIGN_FLAGS = "--timestamp=none";
+				PRODUCT_BUNDLE_IDENTIFIER = io.taylorfinklea.vimkeys.SafariExtension;
+				PRODUCT_NAME = VimKeysSafariExtension;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
 		};
 		6CD86F03088361F8B336002B /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -464,6 +644,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = VimKeys/VimKeys.entitlements;
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -535,7 +716,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -547,7 +728,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.6.2;
+				MARKETING_VERSION = 0.7.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -575,6 +756,15 @@
 			buildConfigurations = (
 				6CD86F03088361F8B336002B /* Debug */,
 				6FDE317D4F98B8F385531664 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8E0A51BC3C7C8DA5B89A8455 /* Build configuration list for PBXNativeTarget "VimKeysSafariExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				299A309D9AE0B514FC661F88 /* Debug */,
+				2C68B74B6FC3F299C5A4CDB3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -69,6 +69,11 @@ if [[ -z "${SKIP_CODESIGN}" ]]; then
 
   echo "Signing ${APP_PATH}"
   echo "  identity: ${DEVELOPER_ID}"
+
+  # First pass: deep-sign everything (catches Sparkle's nested XPC
+  # services and framework binaries) with no entitlements. We'll
+  # overwrite the signatures on the main app + extension below with the
+  # correct entitlements files.
   /usr/bin/codesign \
     --force \
     --options runtime \
@@ -76,6 +81,34 @@ if [[ -z "${SKIP_CODESIGN}" ]]; then
     --sign "${DEVELOPER_ID}" \
     --deep \
     "${APP_PATH}"
+
+  # Re-sign the Safari Web Extension with its sandbox + App Group
+  # entitlements. Must happen BEFORE the main app re-sign so the
+  # outer signature wraps the updated extension signature.
+  APPEX_PATH="${APP_PATH}/Contents/PlugIns/VimKeysSafariExtension.appex"
+  if [[ -d "${APPEX_PATH}" ]]; then
+    echo "Re-signing extension with sandbox + App Group entitlements"
+    /usr/bin/codesign \
+      --force \
+      --options runtime \
+      --timestamp \
+      --sign "${DEVELOPER_ID}" \
+      --entitlements "${ROOT_DIR}/VimKeysSafariExtension/VimKeysSafariExtension.entitlements" \
+      "${APPEX_PATH}"
+  fi
+
+  # Re-sign the main app bundle with its App Group entitlement so
+  # `containerURL(forSecurityApplicationGroupIdentifier:)` works at
+  # runtime. (--deep above gave us a no-entitlements signature.)
+  echo "Re-signing main app with App Group entitlement"
+  /usr/bin/codesign \
+    --force \
+    --options runtime \
+    --timestamp \
+    --sign "${DEVELOPER_ID}" \
+    --entitlements "${ROOT_DIR}/VimKeys/VimKeys.entitlements" \
+    "${APP_PATH}"
+
   /usr/bin/codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
 fi
 

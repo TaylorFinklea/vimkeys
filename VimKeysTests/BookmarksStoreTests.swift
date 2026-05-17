@@ -5,13 +5,13 @@ final class BookmarksStoreTests: XCTestCase {
     /// `start()` should seed the cache from disk synchronously so the
     /// vomnibar has data on the very first `b` press, before any
     /// directory event fires.
-    func testStartSeedsCacheFromExistingFile() throws {
+    func testStartSeedsCacheFromExistingHTMLFile() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("bookmarks.html")
-        try minimalExport(at: file)
+        try writeMinimalExport(at: file)
 
-        let store = BookmarksStore(path: file)
+        let store = BookmarksStore(htmlPath: file, containerPath: nil)
         store.start()
         defer { store.stop() }
 
@@ -21,16 +21,16 @@ final class BookmarksStoreTests: XCTestCase {
         XCTAssertEqual(entries.map(\.title), ["Apple"])
     }
 
-    /// When the file doesn't exist at start time, the cache should
+    /// When neither source exists at start time, the cache should
     /// reflect that — the vomnibar surfaces the export instructions
     /// instead of showing an empty list.
-    func testStartWithMissingFileCachesFailure() throws {
+    func testStartWithNothingCachesFailure() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("bookmarks.html")
         // Deliberately do not create the file.
 
-        let store = BookmarksStore(path: file)
+        let store = BookmarksStore(htmlPath: file, containerPath: nil)
         store.start()
         defer { store.stop() }
 
@@ -40,18 +40,16 @@ final class BookmarksStoreTests: XCTestCase {
     /// Re-export from Safari atomically replaces the file (write tmp +
     /// rename over). The directory watcher should pick that up and
     /// refresh the cache without a process restart.
-    func testWatcherPicksUpNewExport() throws {
+    func testWatcherPicksUpNewHTMLExport() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("bookmarks.html")
-        try minimalExport(at: file, sites: [("Apple", "https://apple.com/")])
+        try writeMinimalExport(at: file, sites: [("Apple", "https://apple.com/")])
 
-        let store = BookmarksStore(path: file)
+        let store = BookmarksStore(htmlPath: file, containerPath: nil)
         store.start()
         defer { store.stop() }
 
-        // Simulate Safari's atomic rename: write to .tmp, then rename
-        // over the target.
         let tmp = dir.appendingPathComponent("bookmarks.html.tmp")
         try minimalExportData(sites: [
             ("GitHub", "https://github.com/"),
@@ -63,47 +61,87 @@ final class BookmarksStoreTests: XCTestCase {
             resultingItemURL: nil
         )
 
-        // Wait for debounced refresh (200 ms debounce + queue hop).
-        let updated = expectation(description: "cache reflects new file")
-        let deadline = Date().addingTimeInterval(2.0)
-        DispatchQueue.global().async {
-            while Date() < deadline {
-                if case .success(let entries) = store.current(),
-                   entries.map(\.title) == ["GitHub", "Swift"] {
-                    updated.fulfill()
-                    return
-                }
-                Thread.sleep(forTimeInterval: 0.05)
-            }
-        }
-        wait(for: [updated], timeout: 3.0)
+        waitForTitles(in: store, expected: ["GitHub", "Swift"])
     }
 
-    /// The `folder` property must point at the parent of the configured
-    /// file — `openBookmarksFolder()` reveals this in Finder, so a
-    /// regression here would Finder-bounce the user to ~/Documents.
-    func testFolderIsParentOfPath() throws {
-        let path = URL(fileURLWithPath: "/tmp/foo/bar/bookmarks.html")
-        let store = BookmarksStore(path: path)
-        XCTAssertEqual(store.folder.path, "/tmp/foo/bar")
-    }
-
-    /// `refresh()` should reflect a manual edit even without going
-    /// through the watcher (covers the menu's "Re-import" button).
-    func testRefreshReadsCurrentFileContents() throws {
+    /// When the App Group container has a JSON snapshot, it wins over
+    /// the HTML export. This is the 0.7.0 live-sync path.
+    func testContainerJSONIsPreferredOverHTML() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let file = dir.appendingPathComponent("bookmarks.html")
-        try minimalExport(at: file, sites: [("Apple", "https://apple.com/")])
+        let htmlFile = dir.appendingPathComponent("bookmarks.html")
+        let containerFile = dir.appendingPathComponent("bookmarks.json")
 
-        let store = BookmarksStore(path: file)
+        try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
+        let json: [[String: Any]] = [
+            ["title": "FromExtension", "url": "https://ext.example/"],
+        ]
+        try JSONSerialization.data(withJSONObject: json).write(to: containerFile)
+
+        let store = BookmarksStore(htmlPath: htmlFile, containerPath: containerFile)
         store.start()
         defer { store.stop() }
-        XCTAssertEqual(try titlesFromCurrent(store), ["Apple"])
 
-        try minimalExport(at: file, sites: [("Reddit", "https://reddit.com/")])
-        store.refresh()
-        XCTAssertEqual(try titlesFromCurrent(store), ["Reddit"])
+        guard case .success(let entries) = store.current() else {
+            return XCTFail("expected success from container")
+        }
+        XCTAssertEqual(entries.map(\.title), ["FromExtension"])
+    }
+
+    /// When the container path is configured but no JSON file exists,
+    /// fall back to HTML. This matches the typical user state after
+    /// installing 0.7.0 but before enabling the Safari extension (or
+    /// before registering the App Group on developer.apple.com).
+    func testFallsBackToHTMLWhenContainerMissing() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let htmlFile = dir.appendingPathComponent("bookmarks.html")
+        let containerFile = dir.appendingPathComponent("bookmarks.json")
+        // Container file deliberately not created.
+
+        try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
+
+        let store = BookmarksStore(htmlPath: htmlFile, containerPath: containerFile)
+        store.start()
+        defer { store.stop() }
+
+        guard case .success(let entries) = store.current() else {
+            return XCTFail("expected HTML fallback")
+        }
+        XCTAssertEqual(entries.map(\.title), ["FromHTML"])
+        XCTAssertFalse(store.isUsingExtension)
+    }
+
+    /// When the extension drops a fresh container snapshot, the watcher
+    /// should pick it up and switch the cache from HTML to JSON.
+    func testWatcherPicksUpContainerJSON() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let htmlFile = dir.appendingPathComponent("bookmarks.html")
+        let containerFile = dir.appendingPathComponent("bookmarks.json")
+        try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
+
+        let store = BookmarksStore(htmlPath: htmlFile, containerPath: containerFile)
+        store.start()
+        defer { store.stop() }
+        XCTAssertEqual(try titles(of: store), ["FromHTML"])
+
+        // Extension dropping a snapshot:
+        let json: [[String: Any]] = [
+            ["title": "Live", "url": "https://live.example/"],
+        ]
+        try JSONSerialization.data(withJSONObject: json).write(to: containerFile)
+
+        waitForTitles(in: store, expected: ["Live"])
+        XCTAssertTrue(store.isUsingExtension)
+    }
+
+    /// `folder` must point at the HTML parent dir — the menu item
+    /// reveals that in Finder. A regression here would Finder-bounce.
+    func testFolderIsParentOfHTMLPath() throws {
+        let path = URL(fileURLWithPath: "/tmp/foo/bar/bookmarks.html")
+        let store = BookmarksStore(htmlPath: path, containerPath: nil)
+        XCTAssertEqual(store.folder.path, "/tmp/foo/bar")
     }
 
     // MARK: - Helpers
@@ -115,7 +153,7 @@ final class BookmarksStoreTests: XCTestCase {
         return dir
     }
 
-    private func minimalExport(
+    private func writeMinimalExport(
         at url: URL,
         sites: [(String, String)] = [("Apple", "https://apple.com/")]
     ) throws {
@@ -131,10 +169,35 @@ final class BookmarksStoreTests: XCTestCase {
         return Data(html.utf8)
     }
 
-    private func titlesFromCurrent(_ store: BookmarksStore) throws -> [String] {
+    private func titles(of store: BookmarksStore) throws -> [String] {
         switch store.current() {
         case .success(let entries): return entries.map(\.title)
         case .failure(let e): throw e
         }
+    }
+
+    /// Polls the store until its cached titles match, or fails after a
+    /// few seconds. Used because the watcher fires asynchronously after
+    /// a 200ms debounce.
+    private func waitForTitles(
+        in store: BookmarksStore,
+        expected: [String],
+        timeout: TimeInterval = 3.0,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        let exp = expectation(description: "cache reflects \(expected)")
+        let deadline = Date().addingTimeInterval(timeout)
+        DispatchQueue.global().async {
+            while Date() < deadline {
+                if case .success(let entries) = store.current(),
+                   entries.map(\.title) == expected {
+                    exp.fulfill()
+                    return
+                }
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+        }
+        wait(for: [exp], timeout: timeout + 0.5)
     }
 }

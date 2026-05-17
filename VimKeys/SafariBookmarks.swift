@@ -82,6 +82,43 @@ enum SafariBookmarks {
         return .success(entries)
     }
 
+    /// Reads the JSON snapshot dropped into the App Group container by
+    /// VimKeysSafariExtension. This is the 0.7.0 live-sync path —
+    /// preferred over the HTML export when present.
+    ///
+    /// **Shape:** `[{"title": "...", "url": "..."}, ...]`. Identical
+    /// semantics to the HTML reader (folder hierarchy already flattened
+    /// by the JS side; non-navigable schemes filtered).
+    static func readJSON(at url: URL) -> Result<[Entry], ReadError> {
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch let error as NSError {
+            if error.domain == NSCocoaErrorDomain,
+               error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError {
+                return .failure(.fileMissing)
+            }
+            return .failure(.malformed)
+        }
+        guard let raw = try? JSONSerialization.jsonObject(with: data),
+              let array = raw as? [[String: Any]] else {
+            return .failure(.malformed)
+        }
+
+        var entries: [Entry] = []
+        for item in array {
+            guard let urlString = item["url"] as? String,
+                  let url = URL(string: urlString) else { continue }
+            guard let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https" || scheme == "ftp" || scheme == "file"
+            else { continue }
+            let rawTitle = (item["title"] as? String) ?? ""
+            let title = rawTitle.isEmpty ? (url.host ?? urlString) : rawTitle
+            entries.append(Entry(title: title, url: url))
+        }
+        return .success(entries)
+    }
+
     /// Pulls every `<A HREF="…">title</A>` from the document. Case-
     /// insensitive on the tag name because Safari's export uses uppercase
     /// while some browsers (and hand-edited files) use lowercase. Title

@@ -1,21 +1,26 @@
 import Foundation
 
-/// Reads Safari's bookmarks plist into a flat list of `(title, url)`
-/// tuples, recursively descending its tree of folders.
+/// Reads bookmarks the user has exported from Safari into a flat list of
+/// `(title, url)` entries.
 ///
-/// **TCC scope:** Safari's bookmarks live at
-/// `~/Library/Safari/Bookmarks.plist`. The default sandbox policy
-/// prevents arbitrary processes from reading the file even though it's
-/// in the user's home directory; macOS requires the reader to be on the
-/// Full Disk Access list. VimKeys surfaces a clear error when the read
-/// fails so the user knows where to look (Settings → Privacy & Security
-/// → Full Disk Access).
+/// **Why not `~/Library/Safari/Bookmarks.plist`?** That path lives under
+/// Apple's Full Disk Access TCC scope — granting FDA is a non-starter for
+/// any user with even loosely-managed security, since it exposes Mail,
+/// Messages, browser cookies, and every other app's data store. Reading a
+/// user-exported file from `~/Documents` is unprivileged on macOS and
+/// requires no TCC grant.
 ///
-/// **Plist format:** top-level dict with `WebBookmarkType` =
-/// `WebBookmarkTypeList` and a `Children` array. Each child is either a
-/// `WebBookmarkTypeLeaf` (has `URLString` + `URIDictionary.title`) or a
-/// nested `WebBookmarkTypeList`. The reader ignores folder hierarchy —
-/// users can filter by title in the vomnibar.
+/// **Workflow:** In Safari, choose **File → Export → Bookmarks…** and save
+/// the resulting HTML file at the path returned by `defaultPath` (the
+/// containing folder will be auto-created on first import, or the user
+/// can create it themselves). VimKeys then reads that file on every `b`/
+/// `B` press; re-export whenever bookmarks change.
+///
+/// **Format:** Safari emits the standard Netscape Bookmark File format
+/// (`<!DOCTYPE NETSCAPE-Bookmark-file-1>`). Entries are simple
+/// `<DT><A HREF="…">title</A>` lines under nested `<DL>` folders. We
+/// ignore folder hierarchy (users filter by title in the vomnibar) and
+/// extract anchors via a regex.
 enum SafariBookmarks {
     struct Entry: Equatable, Identifiable {
         let title: String
@@ -25,15 +30,23 @@ enum SafariBookmarks {
 
     enum ReadError: Error, Equatable {
         case fileMissing
-        case permissionDenied
         case malformed
     }
 
-    /// Default location. Override for tests via `read(at:)`.
+    /// `~/Documents/VimKeys/bookmarks.html`. The user picks this path when
+    /// running Safari's export dialog; we don't try to be clever about
+    /// detecting an alternate location.
     static var defaultPath: URL {
         FileManager.default
             .homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Safari/Bookmarks.plist")
+            .appendingPathComponent("Documents/VimKeys/bookmarks.html")
+    }
+
+    /// Human-readable instruction surfaced when the file is missing.
+    /// Lives here rather than in the UI layer so unit tests can assert it
+    /// stays in sync with the actual `defaultPath`.
+    static var exportInstructions: String {
+        "In Safari: File \u{2192} Export \u{2192} Bookmarks\u{2026} and save to ~/Documents/VimKeys/bookmarks.html"
     }
 
     static func read() -> Result<[Entry], ReadError> {
@@ -45,52 +58,117 @@ enum SafariBookmarks {
         do {
             data = try Data(contentsOf: url)
         } catch let error as NSError {
-            if error.domain == NSCocoaErrorDomain {
-                switch error.code {
-                case NSFileReadNoSuchFileError, NSFileNoSuchFileError:
-                    return .failure(.fileMissing)
-                case NSFileReadNoPermissionError:
-                    return .failure(.permissionDenied)
-                default:
-                    return .failure(.malformed)
-                }
+            if error.domain == NSCocoaErrorDomain,
+               error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError {
+                return .failure(.fileMissing)
             }
-            // Common signal for "this path is sandboxed away from us"
-            // is POSIX EACCES (errno 13).
-            if error.domain == NSPOSIXErrorDomain, error.code == 13 {
-                return .failure(.permissionDenied)
-            }
+            // Anything else (POSIX EACCES from a perms-broken file, IO
+            // errors, etc.) we treat as malformed — the user can re-export
+            // to fix.
             return .failure(.malformed)
         }
 
-        guard let plist = try? PropertyListSerialization.propertyList(from: data, format: nil),
-              let root = plist as? [String: Any] else {
+        guard let html = String(data: data, encoding: .utf8) else {
             return .failure(.malformed)
         }
-        return .success(flatten(node: root, accumulator: []))
+        let entries = parseAnchors(in: html)
+        // An empty bookmark export is technically valid HTML, but the more
+        // common cause is "user pointed at a non-bookmarks HTML file", so
+        // surface it as malformed rather than silently showing an empty
+        // vomnibar.
+        if entries.isEmpty && !html.lowercased().contains("netscape-bookmark-file") {
+            return .failure(.malformed)
+        }
+        return .success(entries)
     }
 
-    private static func flatten(node: Any, accumulator: [Entry]) -> [Entry] {
-        var result = accumulator
-        guard let dict = node as? [String: Any] else { return result }
+    /// Pulls every `<A HREF="…">title</A>` from the document. Case-
+    /// insensitive on the tag name because Safari's export uses uppercase
+    /// while some browsers (and hand-edited files) use lowercase. Title
+    /// text gets HTML-entity-decoded for the common entities (`&amp;`,
+    /// `&lt;`, `&gt;`, `&quot;`, numeric `&#NN;` / `&#xHH;`).
+    private static func parseAnchors(in html: String) -> [Entry] {
+        // Pattern explanation:
+        //   <a\s+              opening tag with at least one whitespace
+        //   [^>]*?             any attributes before HREF (non-greedy)
+        //   href\s*=\s*"       the href attribute
+        //   ([^"]+)            URL — group 1
+        //   "[^>]*>            close the opening tag
+        //   ([\s\S]*?)         title — group 2 (any chars including \n)
+        //   </a>               closing tag
+        let pattern = #"<a\s+[^>]*?href\s*=\s*"([^"]+)"[^>]*>([\s\S]*?)</a>"#
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: [.caseInsensitive]
+        ) else {
+            return []
+        }
+        let range = NSRange(html.startIndex..<html.endIndex, in: html)
+        var results: [Entry] = []
+        regex.enumerateMatches(in: html, range: range) { match, _, _ in
+            guard let match,
+                  match.numberOfRanges >= 3,
+                  let urlRange = Range(match.range(at: 1), in: html),
+                  let titleRange = Range(match.range(at: 2), in: html)
+            else { return }
 
-        let type = dict["WebBookmarkType"] as? String
-        if type == "WebBookmarkTypeLeaf" {
-            if let urlString = dict["URLString"] as? String,
-               let url = URL(string: urlString),
-               let uri = dict["URIDictionary"] as? [String: Any] {
-                let title = (uri["title"] as? String) ?? url.host ?? urlString
-                result.append(Entry(title: title, url: url))
-            }
+            let rawURL = String(html[urlRange])
+            guard let url = URL(string: decodeEntities(rawURL)) else { return }
+
+            // Skip Safari's "place:" / "about:" pseudo-URLs that don't
+            // resolve to real navigations.
+            guard let scheme = url.scheme?.lowercased(),
+                  scheme == "http" || scheme == "https" || scheme == "ftp" || scheme == "file"
+            else { return }
+
+            let rawTitle = String(html[titleRange])
+            let title = decodeEntities(rawTitle)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayTitle = title.isEmpty ? (url.host ?? rawURL) : title
+            results.append(Entry(title: displayTitle, url: url))
+        }
+        return results
+    }
+
+    /// Decodes the small set of HTML entities Safari emits in exports.
+    /// Not a full HTML decoder — those require WebKit and are overkill
+    /// for the four named entities plus numeric refs that appear here.
+    private static func decodeEntities(_ raw: String) -> String {
+        var result = raw
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&apos;", with: "'")
+            .replacingOccurrences(of: "&#39;", with: "'")
+
+        // Numeric entities: &#1234; (decimal) and &#x1F4A9; (hex).
+        let numericPattern = #"&#(x?)([0-9a-fA-F]+);"#
+        guard let regex = try? NSRegularExpression(pattern: numericPattern) else {
             return result
         }
-
-        // WebBookmarkTypeList (or anything else with Children) — recurse.
-        if let children = dict["Children"] as? [Any] {
-            for child in children {
-                result = flatten(node: child, accumulator: result)
+        var working = result
+        while let match = regex.firstMatch(
+            in: working,
+            range: NSRange(working.startIndex..<working.endIndex, in: working)
+        ) {
+            guard let fullRange = Range(match.range, in: working),
+                  let hexFlagRange = Range(match.range(at: 1), in: working),
+                  let digitsRange = Range(match.range(at: 2), in: working) else {
+                break
             }
+            let isHex = !working[hexFlagRange].isEmpty
+            let digits = String(working[digitsRange])
+            let radix = isHex ? 16 : 10
+            guard let code = UInt32(digits, radix: radix),
+                  let scalar = Unicode.Scalar(code) else {
+                // Unparseable: leave it in place and stop replacing so we
+                // don't infinite-loop.
+                break
+            }
+            working.replaceSubrange(fullRange, with: String(Character(scalar)))
         }
+        result = working
         return result
     }
 }

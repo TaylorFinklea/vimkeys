@@ -54,12 +54,10 @@ final class VomnibarCoordinator {
             case .failure(let error):
                 let message: String
                 switch error {
-                case .permissionDenied:
-                    message = "Grant Full Disk Access (Privacy & Security \u{2192} Full Disk Access \u{2192} VimKeys)."
                 case .fileMissing:
-                    message = "Safari has no bookmarks file at the expected path."
+                    message = SafariBookmarks.exportInstructions
                 case .malformed:
-                    message = "Couldn't parse Safari's Bookmarks.plist."
+                    message = "Couldn't parse bookmarks file. Try re-exporting from Safari."
                 }
                 onError?(message)
                 exit()

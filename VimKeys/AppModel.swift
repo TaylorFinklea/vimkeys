@@ -191,6 +191,11 @@ final class AppModel: ObservableObject {
         // first keystroke. Refreshed automatically on input-source change.
         KeyboardLayoutCache.shared.start()
 
+        // Seed the bookmarks cache + start watching ~/Documents/VimKeys/
+        // for fresh exports. The vomnibar reads from the cache on each
+        // `b` / `B` press instead of re-parsing the HTML file every time.
+        BookmarksStore.shared.start()
+
         safariObserver.start()
         // Seed the engine with the current frontmost state — SafariObserver
         // emits only on transitions, so the very first one is silent.
@@ -492,5 +497,14 @@ final class AppModel: ObservableObject {
 
     func quit() {
         NSApplication.shared.terminate(nil)
+    }
+
+    /// Reveal the bookmarks-export folder in Finder. Creates the folder
+    /// first if the user hasn't run an export yet so they don't get a
+    /// "folder doesn't exist" Finder bounce.
+    func openBookmarksFolder() {
+        let folder = BookmarksStore.shared.folder
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(folder)
     }
 }

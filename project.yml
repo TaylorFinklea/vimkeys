@@ -5,8 +5,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 6.0
-    MARKETING_VERSION: 0.6.1
-    CURRENT_PROJECT_VERSION: 10
+    MARKETING_VERSION: 0.6.2
+    CURRENT_PROJECT_VERSION: 11
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -43,8 +43,8 @@ targets:
       path: VimKeys/Info.plist
       properties:
         CFBundleDisplayName: VimKeys
-        CFBundleShortVersionString: "0.6.1"
-        CFBundleVersion: "10"
+        CFBundleShortVersionString: "0.6.2"
+        CFBundleVersion: "11"
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
         NSAppleEventsUsageDescription: "VimKeys uses Apple Events to read Safari's open tabs and URL, copy the current page link to the clipboard, and open URLs you type in the vomnibar (o / O / T / yy / p / P)."

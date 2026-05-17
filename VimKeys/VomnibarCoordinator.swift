@@ -48,7 +48,7 @@ final class VomnibarCoordinator {
             window.viewModel.mode = .tabs
         case .bookmarks:
             tabs = []
-            switch SafariBookmarks.read() {
+            switch BookmarksStore.shared.current() {
             case .success(let entries):
                 bookmarks = entries
             case .failure(let error):

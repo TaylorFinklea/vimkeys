@@ -41,6 +41,10 @@ struct StatusMenuView: View {
                 openSettings()
             }
 
+            Button("Open Bookmarks Folder") {
+                model.openBookmarksFolder()
+            }
+
             CheckForUpdatesView(updater: updater)
 
             Button("Quit VimKeys") {

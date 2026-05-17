@@ -27,6 +27,7 @@
 		5E7346DC55AC5BC150384642 /* KeyCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DD44CB7ADCBF6AB9CDF258 /* KeyCatalog.swift */; };
 		6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */; };
 		679926D748503FB62A04AE3A /* SitesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */; };
+		79EA3109B68EB6F24E904A6D /* BookmarksStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */; };
 		7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */; };
 		7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */; };
 		808C03952C75ABEF7C80DCA9 /* KeyboardLayoutCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A436DBB67699499A37E5C9D /* KeyboardLayoutCache.swift */; };
@@ -42,6 +43,7 @@
 		D3553166021422DD6FE16A64 /* SettingsStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */; };
 		D5D89FF8B52361736F5BB5D7 /* SafariObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D316DCF978DDD42EA98898E /* SafariObserver.swift */; };
 		D9766F2EF69BD8227882F7EA /* HintOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */; };
+		E0AA8EE8F81EB2886881090B /* BookmarksStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA3D85A43BD21955E57C62E7 /* BookmarksStore.swift */; };
 		F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */; };
 		F3BBA4DA1D2008B48CF65B5D /* SafariBookmarksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8FF24F6720B9B25FD71145 /* SafariBookmarksTests.swift */; };
 		F96B50A1A1253FB0F0FE4654 /* VimKeysApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */; };
@@ -74,6 +76,7 @@
 		37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngineTests.swift; sourceTree = "<group>"; };
 		38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifier.swift; sourceTree = "<group>"; };
 		3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMenuView.swift; sourceTree = "<group>"; };
+		3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksStoreTests.swift; sourceTree = "<group>"; };
 		3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesStore.swift; sourceTree = "<group>"; };
 		4108153C9AF722A1FCC16B8F /* SafariBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBridge.swift; sourceTree = "<group>"; };
 		4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HintOverlayWindow.swift; sourceTree = "<group>"; };
@@ -98,6 +101,7 @@
 		B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayoutTests.swift; sourceTree = "<group>"; };
 		CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayManager.swift; sourceTree = "<group>"; };
 		D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarCoordinator.swift; sourceTree = "<group>"; };
+		FA3D85A43BD21955E57C62E7 /* BookmarksStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +142,7 @@
 				514129D1C8FA0A6FD0F6AD0E /* AppModel.swift */,
 				4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */,
 				4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */,
+				FA3D85A43BD21955E57C62E7 /* BookmarksStore.swift */,
 				4D59CB50E2605937670B3A1C /* EventTapEngine.swift */,
 				01D5EC39F624E7E18B3A3D86 /* EventTapService.swift */,
 				942AB09B3B5A4820F73B44E7 /* Info.plist */,
@@ -168,6 +173,7 @@
 		93C7BF5A9FD5BEC6DDF0CD8B /* VimKeysTests */ = {
 			isa = PBXGroup;
 			children = (
+				3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */,
 				0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */,
 				37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */,
 				5E8FF24F6720B9B25FD71145 /* SafariBookmarksTests.swift */,
@@ -297,6 +303,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				79EA3109B68EB6F24E904A6D /* BookmarksStoreTests.swift in Sources */,
 				145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */,
 				F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */,
 				F3BBA4DA1D2008B48CF65B5D /* SafariBookmarksTests.swift in Sources */,
@@ -314,6 +321,7 @@
 			files = (
 				7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */,
 				521A69AB58F6C0DD80586D67 /* AppModel.swift in Sources */,
+				E0AA8EE8F81EB2886881090B /* BookmarksStore.swift in Sources */,
 				C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */,
 				42DF4916F2EDA85F07135995 /* EventTapService.swift in Sources */,
 				271A12C9FF9A2195C1E313B6 /* HelpOverlayWindow.swift in Sources */,
@@ -388,7 +396,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -406,7 +414,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.6.1;
+				MARKETING_VERSION = 0.6.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -527,7 +535,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -539,7 +547,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.6.1;
+				MARKETING_VERSION = 0.6.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

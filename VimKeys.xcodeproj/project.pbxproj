@@ -14,6 +14,7 @@
 		145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */; };
 		19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004109781E456471EA923D53 /* MenuBarIconView.swift */; };
 		233EC0FDD4AF2C0FE6486471 /* USKeyboardLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */; };
+		24EB6FAAB8C8A98FFA3196F4 /* ModeIndicatorWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F316CCE74EC2C4560780C28B /* ModeIndicatorWindow.swift */; };
 		256EC8ABD4596F84E62A5259 /* SafariBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4108153C9AF722A1FCC16B8F /* SafariBridge.swift */; };
 		25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */; };
 		271A12C9FF9A2195C1E313B6 /* HelpOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */; };
@@ -139,6 +140,7 @@
 		CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayManager.swift; sourceTree = "<group>"; };
 		D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarCoordinator.swift; sourceTree = "<group>"; };
 		EE2AE4CD7D8F739F2F8EC9B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F316CCE74EC2C4560780C28B /* ModeIndicatorWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeIndicatorWindow.swift; sourceTree = "<group>"; };
 		F92DFCA0F6060F895949E212 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
 		FA3D85A43BD21955E57C62E7 /* BookmarksStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -160,6 +162,7 @@
 			children = (
 				7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */,
 				4125D9266CA809EF832E9E22 /* HintOverlayWindow.swift */,
+				F316CCE74EC2C4560780C28B /* ModeIndicatorWindow.swift */,
 				CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */,
 				44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */,
 			);
@@ -455,6 +458,7 @@
 				B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */,
 				08C26D4A732097EDC86E7889 /* LinkHintEngine.swift in Sources */,
 				19880BA1951291CAD2B528BB /* MenuBarIconView.swift in Sources */,
+				24EB6FAAB8C8A98FFA3196F4 /* ModeIndicatorWindow.swift in Sources */,
 				D2218425E2081E51D03957AA /* OverlayManager.swift in Sources */,
 				037A599E2DF7CF12FE0D2FDB /* PermissionController.swift in Sources */,
 				CA6A1DABCD38EB44F6DA0369 /* SafariBookmarks.swift in Sources */,
@@ -532,7 +536,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -550,7 +554,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -716,7 +720,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -728,7 +732,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.7.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

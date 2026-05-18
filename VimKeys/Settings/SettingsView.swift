@@ -121,9 +121,9 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Insert mode") {
+                Section("Mode default") {
                     Picker(
-                        "Switch into insert mode",
+                        "When Safari is frontmost",
                         selection: Binding(
                             get: { model.settings.insertModeBehavior },
                             set: { model.setInsertModeBehavior($0) }
@@ -133,9 +133,9 @@ struct SettingsView: View {
                             Text(behavior.title).tag(behavior)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.radioGroup)
 
-                    Text("Auto-detect uses Accessibility to flip into insert mode whenever Safari focuses a text input, and back to normal mode when focus leaves. Manual mode ignores focus changes \u{2014} press i to enter insert mode and Esc to leave it.")
+                    Text(model.settings.insertModeBehavior.detail)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

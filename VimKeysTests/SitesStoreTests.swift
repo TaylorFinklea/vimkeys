@@ -46,7 +46,7 @@ final class SitesStoreTests: XCTestCase {
 
 final class VimStateMachineSitesTests: XCTestCase {
     func testDecideDisablesWhenHostMatches() {
-        var settings = VimSettings.v1Default
+        var settings = VimSettings(insertModeBehavior: .autoDetect)
         settings.disabledHosts = ["gmail.com"]
         var machine = VimStateMachine(settings: settings)
         machine.updateSafariFrontmost(true)
@@ -61,7 +61,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testNavigatingOffDisabledHostReturnsToNormal() {
-        var settings = VimSettings.v1Default
+        var settings = VimSettings(insertModeBehavior: .autoDetect)
         settings.disabledHosts = ["gmail.com"]
         var machine = VimStateMachine(settings: settings)
         machine.updateSafariFrontmost(true)
@@ -73,7 +73,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testAddingHostWhileOnPageDisables() {
-        var settings = VimSettings.v1Default
+        var settings = VimSettings(insertModeBehavior: .autoDetect)
         var machine = VimStateMachine(settings: settings)
         machine.updateSafariFrontmost(true)
         machine.updateCurrentURL(URL(string: "https://gmail.com/inbox"))
@@ -85,7 +85,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testEscChordSuspendsCurrentURL() {
-        var machine = VimStateMachine(settings: .v1Default)
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)
         machine.updateCurrentURL(URL(string: "https://github.com/foo"))
 
@@ -106,7 +106,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testEscChordOutsideWindowDoesNotFire() {
-        var machine = VimStateMachine(settings: .v1Default)
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)
         machine.updateCurrentURL(URL(string: "https://github.com/foo"))
 
@@ -123,7 +123,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testNonEscBetweenResetsChord() {
-        var machine = VimStateMachine(settings: .v1Default)
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)
         machine.updateCurrentURL(URL(string: "https://github.com/foo"))
 
@@ -144,7 +144,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testToggleSuspendEntersDisabledBySite() {
-        var machine = VimStateMachine(settings: .v1Default)
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)
         let url = URL(string: "https://github.com/foo")!
         machine.updateCurrentURL(url)
@@ -156,7 +156,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testNavigatingAwayClearsSessionSuspend() {
-        var machine = VimStateMachine(settings: .v1Default)
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)
         let url = URL(string: "https://github.com/foo")!
         machine.updateCurrentURL(url)
@@ -169,7 +169,7 @@ final class VimStateMachineSitesTests: XCTestCase {
     }
 
     func testReToggleSuspendOnSameURLUnsuspends() {
-        var machine = VimStateMachine(settings: .v1Default)
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)
         let url = URL(string: "https://github.com/foo")!
         machine.updateCurrentURL(url)

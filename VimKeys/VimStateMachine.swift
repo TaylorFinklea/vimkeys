@@ -183,6 +183,16 @@ struct VimStateMachine {
 
     // MARK: - External event sources
 
+    /// What mode VimKeys lands in when Safari first comes frontmost (or
+    /// when a previously-disabled site is re-enabled). Driven by the
+    /// user's `InsertModeBehavior` setting — `.insertFirst` enters
+    /// `.insert` so the user's typing reaches the page by default;
+    /// everything else enters `.normal(.none)` and the vim bindings
+    /// are immediately live.
+    var defaultMode: VimMode {
+        settings.insertModeBehavior == .insertFirst ? .insert : .normal(prefix: .none)
+    }
+
     /// Called by the engine when `SafariObserver` reports Safari frontmost
     /// changed. Returns a decision iff mode changed.
     @discardableResult
@@ -192,7 +202,7 @@ struct VimStateMachine {
             if isCurrentHostDisabled {
                 return setMode(.disabledBySite, intent: .passThrough)
             }
-            return setMode(.normal(prefix: .none), intent: .passThrough)
+            return setMode(defaultMode, intent: .passThrough)
         } else {
             guard !isModeOff else { return nil }
             return setMode(.disabled, intent: .passThrough)
@@ -233,7 +243,7 @@ struct VimStateMachine {
         case .disabled:
             return nil  // Safari not frontmost; ignore.
         case .disabledBySite where !disabled:
-            return setMode(.normal(prefix: .none), intent: .passThrough)
+            return setMode(defaultMode, intent: .passThrough)
         case .normal where disabled:
             return setMode(.disabledBySite, intent: .passThrough)
         default:
@@ -410,9 +420,16 @@ struct VimStateMachine {
                 // Cancel pending count / g prefix.
                 return setMode(.normal(prefix: .none), intent: .consume)
             }
-            // Esc in normal-no-prefix is a no-op for vim; pass through so
-            // any app-level Esc handler (none expected, but be conservative)
-            // still sees it.
+            // Esc in normal-no-prefix:
+            //   - In `.insertFirst`, this is the user's way back to the
+            //     default mode (.insert) — we own Esc as the toggle.
+            //   - In `.autoDetect` / `.manual`, the user is already in
+            //     the "active" mode by design, so we don't intercept
+            //     Esc — pass it through to the page so any web-side
+            //     Esc handler (modal dialogs, etc.) still works.
+            if settings.insertModeBehavior == .insertFirst {
+                return setMode(.insert, intent: .consume)
+            }
             return VimDecision(intent: .passThrough)
         case .help:
             return setMode(.normal(prefix: .none), intent: .dismissOverlay)

@@ -6,7 +6,11 @@ final class VimStateMachineTests: XCTestCase {
     private let baseTimestamp: UInt64 = 1_000_000_000
 
     private func defaultSettings() -> VimSettings {
-        .v1Default
+        // Pre-0.7.1 tests assume `.normal` is the floor mode after
+        // becoming Safari-frontmost. Pin `.autoDetect` here so the
+        // existing scroll / hint / find expectations still hold;
+        // dedicated `.insertFirst` tests live further down the file.
+        VimSettings(insertModeBehavior: .autoDetect)
     }
 
     // MARK: - Disabled-mode pass-through
@@ -778,5 +782,94 @@ final class VimStateMachineTests: XCTestCase {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
         XCTAssertNil(machine.exitHintMode())
+    }
+
+    // MARK: - 0.7.1: insertFirst behavior
+
+    private func insertFirstSettings() -> VimSettings {
+        VimSettings(insertModeBehavior: .insertFirst)
+    }
+
+    /// In `.insertFirst`, becoming Safari-frontmost should land us in
+    /// `.insert` (not `.normal`). This is the whole point — keystrokes
+    /// hit the page by default, no `i` ceremony.
+    func testInsertFirstStartsInInsertOnSafariFrontmost() {
+        var machine = VimStateMachine(settings: insertFirstSettings())
+        let d = machine.updateSafariFrontmost(true)
+        XCTAssertNotNil(d)
+        XCTAssertEqual(machine.mode, .insert)
+    }
+
+    /// Esc in `.insert` always returns to `.normal(.none)` regardless
+    /// of behavior — this lets the user opt into vim mode on demand.
+    func testInsertFirstEscFromInsertEntersNormal() {
+        var machine = VimStateMachine(settings: insertFirstSettings())
+        machine.updateSafariFrontmost(true)
+        XCTAssertEqual(machine.mode, .insert)
+
+        let esc = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                 characters: nil, flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+        XCTAssertEqual(esc.intent, .unfocusActiveElement)
+    }
+
+    /// Esc in `.normal(.none)` under `.insertFirst` is the round-trip
+    /// back to `.insert`. Critically: the intent is `.consume` so the
+    /// Esc keystroke doesn't reach the page (where it would close
+    /// random Safari dialogs).
+    func testInsertFirstEscFromNormalReturnsToInsert() {
+        var machine = VimStateMachine(settings: insertFirstSettings())
+        machine.updateSafariFrontmost(true)
+        // Esc once: insert -> normal
+        _ = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                           characters: nil, flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+
+        // Esc again: normal -> insert (round trip)
+        let esc = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                 characters: nil, flags: [], timestamp: baseTimestamp + 1_000_000_000)
+        XCTAssertEqual(machine.mode, .insert)
+        XCTAssertEqual(esc.intent, .consume)
+    }
+
+    /// Esc in `.normal(.none)` under `.autoDetect` must NOT eat the
+    /// keypress (it should pass through to the page) — regression guard
+    /// against the insertFirst change leaking into autoDetect users.
+    func testAutoDetectEscFromNormalPassesThrough() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+
+        let esc = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                 characters: nil, flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(esc.intent, .passThrough)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+    }
+
+    /// `defaultMode` should reflect the setting — verifying the helper
+    /// since several other call sites depend on it.
+    func testDefaultModeReflectsSetting() {
+        let insertFirst = VimStateMachine(settings: insertFirstSettings())
+        XCTAssertEqual(insertFirst.defaultMode, .insert)
+
+        let auto = VimStateMachine(settings: defaultSettings())
+        XCTAssertEqual(auto.defaultMode, .normal(prefix: .none))
+    }
+
+    // MARK: - 0.7.1: mode indicator labels
+
+    /// The pill copy is part of the user's UI; it should not silently
+    /// drift between releases. One assertion per state covers the
+    /// switch's exhaustiveness too — if a new case is added, this fails
+    /// to compile until the helper handles it.
+    func testModeIndicatorTextCovers() {
+        XCTAssertNil(AppModel.modeIndicatorText(for: .disabled))
+        XCTAssertNil(AppModel.modeIndicatorText(for: .insert))
+        XCTAssertNil(AppModel.modeIndicatorText(for: .help))
+        XCTAssertEqual(AppModel.modeIndicatorText(for: .disabledBySite), "-- OFF (site) --")
+        XCTAssertEqual(AppModel.modeIndicatorText(for: .normal(prefix: .none)), "-- NORMAL --")
+        XCTAssertEqual(AppModel.modeIndicatorText(for: .normal(prefix: .count(5))), "-- NORMAL -- 5")
+        XCTAssertEqual(AppModel.modeIndicatorText(for: .normal(prefix: .g(count: nil))), "-- NORMAL -- g")
+        XCTAssertEqual(AppModel.modeIndicatorText(for: .vomnibar(VomnibarState(flavor: .url(openInNewTab: false)))), "-- VOMNIBAR --")
     }
 }

@@ -24,7 +24,7 @@ final class SettingsStoreTests: XCTestCase {
     func testLoadReturnsDefaultsWhenNothingPersisted() {
         let store = SettingsStore(defaults: defaults)
         let settings = store.load()
-        XCTAssertEqual(settings.insertModeBehavior, .autoDetect)
+        XCTAssertEqual(settings.insertModeBehavior, .insertFirst)
     }
 
     func testRoundTripsInsertModeBehavior() {
@@ -45,12 +45,12 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.load().insertModeBehavior, .manual)
 
         store.reset()
-        XCTAssertEqual(store.load().insertModeBehavior, .autoDetect)
+        XCTAssertEqual(store.load().insertModeBehavior, .insertFirst)
     }
 
     func testIgnoresUnrecognizedRawValue() {
         defaults.set("garbage", forKey: "settings.insertModeBehavior")
         let store = SettingsStore(defaults: defaults)
-        XCTAssertEqual(store.load().insertModeBehavior, .autoDetect)
+        XCTAssertEqual(store.load().insertModeBehavior, .insertFirst)
     }
 }

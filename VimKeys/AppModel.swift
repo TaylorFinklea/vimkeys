@@ -38,8 +38,16 @@ final class AppModel: ObservableObject {
     private var urlPollTimer: DispatchSourceTimer?
     private static let urlPollInterval: DispatchTimeInterval = .milliseconds(1500)
     private var lastReportedURL: URL?
+    private var cancellables = Set<AnyCancellable>()
 
     static let didShowLaunchAtLoginPromptKey = "didShowLaunchAtLoginPrompt"
+    /// One-time migration: 0.6.x defaulted to `.autoDetect`, which turned
+    /// out to be brittle on modern contenteditable-heavy web apps (Notion,
+    /// ChatGPT, Linear). 0.7.1 flips the default to `.insertFirst`; this
+    /// sentinel lets us migrate existing users who never explicitly chose
+    /// `.autoDetect` (since they look indistinguishable from new users
+    /// who got `.autoDetect` by default).
+    static let didMigrateInsertFirstKey = "didMigrateTo071InsertFirst"
 
     init(
         settingsStore: SettingsStore = .shared,
@@ -53,7 +61,18 @@ final class AppModel: ObservableObject {
     ) {
         self.settingsStore = settingsStore
         self.userDefaults = userDefaults
-        let loadedSettings = settingsStore.load()
+        var loadedSettings = settingsStore.load()
+
+        // One-shot migration to the 0.7.1 default. See
+        // `didMigrateInsertFirstKey` above for why.
+        if !userDefaults.bool(forKey: Self.didMigrateInsertFirstKey) {
+            if loadedSettings.insertModeBehavior == .autoDetect {
+                loadedSettings.insertModeBehavior = .insertFirst
+                settingsStore.save(loadedSettings)
+            }
+            userDefaults.set(true, forKey: Self.didMigrateInsertFirstKey)
+        }
+
         self.settings = loadedSettings
         permissionState = PermissionController.currentState()
         accessibilityGranted = PermissionController.hasPostEventAccess
@@ -205,6 +224,39 @@ final class AppModel: ObservableObject {
             Task { @MainActor [weak self] in
                 self?.showLaunchAtLoginPromptIfNeeded()
             }
+        }
+
+        // Drive the on-screen mode indicator. `$mode` fires every time
+        // the state machine reports a transition; the helper computes
+        // the user-facing label (or `nil` to hide the overlay during
+        // insert / disabled).
+        $mode
+            .sink { [weak self] newMode in
+                self?.overlayManager.updateModeIndicator(text: Self.modeIndicatorText(for: newMode))
+            }
+            .store(in: &cancellables)
+    }
+
+    /// User-facing label for the bottom-right mode-indicator pill.
+    /// Returns nil to suppress the pill entirely — used during `.insert`
+    /// (no chrome while typing), `.help` (its own overlay is up), and
+    /// `.disabled` (Safari isn't frontmost).
+    nonisolated static func modeIndicatorText(for mode: VimMode) -> String? {
+        switch mode {
+        case .disabled, .insert, .help:
+            return nil
+        case .disabledBySite:
+            return "-- OFF (site) --"
+        case .normal(let prefix):
+            switch prefix {
+            case .none: return "-- NORMAL --"
+            case .count(let n): return "-- NORMAL -- \(n)"
+            case .g: return "-- NORMAL -- g"
+            case .y: return "-- NORMAL -- y"
+            }
+        case .find: return "-- FIND --"
+        case .hint: return "-- HINT --"
+        case .vomnibar: return "-- VOMNIBAR --"
         }
     }
 

@@ -122,6 +122,11 @@ enum VimIntent: Equatable {
     case copyToClipboard(String)
     case unfocusActiveElement
     case toggleSuspended
+    /// 0.7.4: Cmd+Shift+H / Cmd+Shift+L. Driven by AppModel via
+    /// SafariBridge — Safari exposes "Go to Previous/Next Tab Group" as
+    /// Window-menu items but ships no default keyboard shortcut.
+    case previousTabGroup
+    case nextTabGroup
     case showHelp
 }
 
@@ -362,7 +367,8 @@ struct VimStateMachine {
         // means Cmd+Shift+H still hides app via macOS, Cmd+Option+L
         // still works for whatever Safari has there, etc. — only the
         // unmodified Cmd+H/L chord is rerouted.
-        if flags.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift]) == .maskCommand {
+        let chordMods = flags.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift])
+        if chordMods == .maskCommand {
             switch keyCode {
             case VimKeyCode.h:
                 return VimDecision(intent: .postKey(
@@ -374,6 +380,20 @@ struct VimStateMachine {
                     virtualKey: VimKeyCode.rightBracket,
                     flags: [.maskCommand, .maskShift]
                 ))
+            default:
+                break
+            }
+        }
+        // Cmd+Shift+H / Cmd+Shift+L — tab-group navigation. Safari's
+        // own menu items ("Go to Previous Tab Group" / "Go to Next Tab
+        // Group") ship no default shortcut, so VimKeys clicks them via
+        // AX from the AppModel callback.
+        if chordMods == [.maskCommand, .maskShift] {
+            switch keyCode {
+            case VimKeyCode.h:
+                return VimDecision(intent: .previousTabGroup)
+            case VimKeyCode.l:
+                return VimDecision(intent: .nextTabGroup)
             default:
                 break
             }

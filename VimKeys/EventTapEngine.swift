@@ -33,6 +33,7 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
     private let onCopyCurrentURL: () -> Void
     private let onOpenClipboardURL: (Bool) -> Void
     private let onToggleSuspended: () -> Void
+    private let onTabGroupNavigation: (Bool) -> Void
 
     private var thread: Thread?
     private var tapPort: CFMachPort?
@@ -54,7 +55,8 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         onForwardVomnibarKey: @escaping (String) -> Void = { _ in },
         onCopyCurrentURL: @escaping () -> Void = {},
         onOpenClipboardURL: @escaping (Bool) -> Void = { _ in },
-        onToggleSuspended: @escaping () -> Void = {}
+        onToggleSuspended: @escaping () -> Void = {},
+        onTabGroupNavigation: @escaping (Bool) -> Void = { _ in }
     ) {
         stateMachine = VimStateMachine(settings: settings)
         self.onModeChange = onModeChange
@@ -68,6 +70,7 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         self.onCopyCurrentURL = onCopyCurrentURL
         self.onOpenClipboardURL = onOpenClipboardURL
         self.onToggleSuspended = onToggleSuspended
+        self.onTabGroupNavigation = onTabGroupNavigation
     }
 
     /// Called by AppModel after the user binds `Esc-Esc` from a UI button
@@ -416,6 +419,14 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
 
         case .toggleSuspended:
             onToggleSuspended()
+            return nil
+
+        case .previousTabGroup:
+            onTabGroupNavigation(false)
+            return nil
+
+        case .nextTabGroup:
+            onTabGroupNavigation(true)
             return nil
 
         case .unfocusActiveElement:

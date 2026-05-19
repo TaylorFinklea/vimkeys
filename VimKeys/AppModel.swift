@@ -190,6 +190,11 @@ final class AppModel: ObservableObject {
             // where the state machine lives.
             service?.toggleSuspendOnCurrentURL()
         }
+        service.onTabGroupNavigation = { [weak self] forward in
+            Task { @MainActor in
+                self?.navigateTabGroup(forward: forward)
+            }
+        }
 
         // Vomnibar error sink (deferred from above): bookmarks reads
         // surface FDA-denied messages here so the user has a breadcrumb.
@@ -549,6 +554,17 @@ final class AppModel: ObservableObject {
 
     func quit() {
         NSApplication.shared.terminate(nil)
+    }
+
+    /// Cmd+Shift+H / Cmd+Shift+L handler. Drives Safari's
+    /// `Window → Go to Previous / Next Tab Group` menu item via the
+    /// SafariBridge. If the click fails (older macOS, AX denied, no
+    /// tab groups defined yet) we surface a flash in `lastError` so
+    /// the user has a breadcrumb.
+    func navigateTabGroup(forward: Bool) {
+        if !safariBridge.goToTabGroup(forward: forward) {
+            lastError = "Couldn't switch tab group (Safari's menu wasn't reachable)."
+        }
     }
 
     /// Reveal the bookmarks-export folder in Finder. Creates the folder

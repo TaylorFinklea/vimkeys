@@ -100,6 +100,33 @@ struct SafariBridge {
         return run(script: script) != .error
     }
 
+    /// Trigger Safari's `Window → Go to Previous Tab Group` / `Go to
+    /// Next Tab Group` menu items via System Events. Safari ships those
+    /// menu items but no default keyboard shortcut, so VimKeys clicks
+    /// them programmatically when the user types Cmd+Shift+H / Cmd+Shift+L.
+    ///
+    /// Requires Accessibility (which VimKeys already needs for its event
+    /// tap). Returns true if the click went through; false if Safari's
+    /// menu structure doesn't match (e.g. an older macOS version where
+    /// the items were named differently) or AX denied.
+    @discardableResult
+    func goToTabGroup(forward: Bool) -> Bool {
+        let itemName = forward ? "Go to Next Tab Group" : "Go to Previous Tab Group"
+        let script = """
+        tell application "System Events"
+            tell process "Safari"
+                try
+                    click menu item "\(itemName)" of menu of menu bar item "Window" of menu bar 1
+                    return true
+                on error
+                    return false
+                end try
+            end tell
+        end tell
+        """
+        return run(script: script) != .error
+    }
+
     /// Focus a specific tab (by its URL — since AppleScript identifies
     /// tabs by index per window, easier to find by URL). Used by the tab
     /// vomnibar to jump.

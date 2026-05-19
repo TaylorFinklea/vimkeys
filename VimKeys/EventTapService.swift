@@ -47,6 +47,7 @@ final class EventTapService {
     var onCopyCurrentURL: (() -> Void)?
     var onOpenClipboardURL: ((Bool) -> Void)?
     var onToggleSuspended: (() -> Void)?
+    var onTabGroupNavigation: ((Bool) -> Void)?
 
     private let lock = NSLock()
     private var settings: VimSettings
@@ -152,6 +153,9 @@ final class EventTapService {
             },
             onToggleSuspended: { [weak self] in
                 self?.onToggleSuspended?()
+            },
+            onTabGroupNavigation: { [weak self] forward in
+                self?.onTabGroupNavigation?(forward)
             }
         )
         let started = engine.start()

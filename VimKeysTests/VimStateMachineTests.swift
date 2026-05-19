@@ -544,15 +544,14 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.rightBracket, flags: [.maskCommand, .maskShift]))
     }
 
-    /// Critical: the tab remap should ONLY fire when Cmd is the sole
-    /// modifier. Cmd+Shift+H (or any other multi-modifier combo) must
-    /// pass through so the user keeps macOS's "Hide Others" shortcut
-    /// and any other system bindings.
-    func testCmdShiftHPassesThrough() {
+    /// Cmd+Option+H (Hide Others under macOS) must NOT be eaten by the
+    /// Cmd+H tab remap — the exact-modifier check is critical so users
+    /// keep their three-modifier system bindings.
+    func testCmdOptionHPassesThrough() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
-        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "H",
-                               flags: [.maskCommand, .maskShift], timestamp: baseTimestamp)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "h",
+                               flags: [.maskCommand, .maskAlternate], timestamp: baseTimestamp)
         XCTAssertEqual(d.intent, .passThrough)
     }
 
@@ -565,6 +564,35 @@ final class VimStateMachineTests: XCTestCase {
         let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "h",
                                flags: .maskCommand, timestamp: baseTimestamp)
         XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.leftBracket, flags: [.maskCommand, .maskShift]))
+    }
+
+    /// Cmd+Shift+H emits `.previousTabGroup`; AppModel handles by
+    /// triggering Safari's "Window → Go to Previous Tab Group" menu item.
+    func testCmdShiftHEmitsPreviousTabGroup() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "H",
+                               flags: [.maskCommand, .maskShift], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .previousTabGroup)
+    }
+
+    func testCmdShiftLEmitsNextTabGroup() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.l, characters: "L",
+                               flags: [.maskCommand, .maskShift], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .nextTabGroup)
+    }
+
+    /// Critical: adding a third modifier (Option) must NOT match the
+    /// tab-group chord. Users still keep all their three-modifier
+    /// system bindings.
+    func testCmdShiftOptionHPassesThrough() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "H",
+                               flags: [.maskCommand, .maskShift, .maskAlternate], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .passThrough)
     }
 
     func testDecideIEntersInsertMode() {

@@ -53,7 +53,7 @@ final class KeyCatalogTests: XCTestCase {
     // If a future commit adds or removes a binding row in
     // `VimBindings.v1Default`, update the counts here too — the duplicate-
     // chord assertion above relies on them.
-    private let declaredSinglePairCount = 25  // j k h l d u G f F / n N H L r R o O b B T p P i ?
+    private let declaredSinglePairCount = 27  // j k h l d u G f F / n N H L r R o O b B T p P i ? x X
     private let declaredGPrefixCount = 3      // g i s
     private let declaredYPrefixCount = 2      // y f
 }

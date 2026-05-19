@@ -510,6 +510,22 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskAlternate]))
     }
 
+    func testDecideXClosesTab() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x07, characters: "x",
+                               flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.w, flags: .maskCommand))
+    }
+
+    func testDecideShiftXReopensClosedTab() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x07, characters: "X",
+                               flags: .maskShift, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.t, flags: [.maskCommand, .maskShift]))
+    }
+
     func testDecideIEntersInsertMode() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)

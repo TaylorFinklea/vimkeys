@@ -119,6 +119,10 @@ private struct HelpEntry: Identifiable {
             HelpEntry(chord: "H / L", command: "History back / forward", detail: "Cmd+[ / Cmd+]"),
             HelpEntry(chord: "r / R", command: "Reload / hard reload", detail: "Cmd+R / Cmd+Shift+R"),
         ]),
+        HelpSection(title: "Tabs", entries: [
+            HelpEntry(chord: "x", command: "Close current tab", detail: "Cmd+W"),
+            HelpEntry(chord: "X", command: "Reopen last closed tab", detail: "Cmd+Shift+T (stack depth ~10)"),
+        ]),
         HelpSection(title: "Mode", entries: [
             HelpEntry(chord: "i", command: "Enter insert mode", detail: "Manual insert override"),
             HelpEntry(chord: "Esc", command: "Exit insert / cancel prefix", detail: "Returns to normal mode"),

@@ -25,6 +25,10 @@ enum VimCommand: String, CaseIterable, Hashable {
     case reload
     case hardReload
 
+    // Tab close / reopen (0.7.2) — Vimium-compatible bindings.
+    case closeTab
+    case reopenTab
+
     // Insert + escape + help (V-M2)
     case enterInsert
     case escape
@@ -96,6 +100,8 @@ struct VimBindings: Equatable {
             "P": .openClipboardNewTab,
             "i": .enterInsert,
             "?": .help,
+            "x": .closeTab,
+            "X": .reopenTab,
         ],
         gPrefix: [
             "g": .top,
@@ -142,4 +148,9 @@ enum VimKeyCode {
     static let u: CGKeyCode = 0x20
     static let leftBracket: CGKeyCode = 0x21
     static let rightBracket: CGKeyCode = 0x1E
+
+    /// `t` keycode — Cmd+T = new tab, Cmd+Shift+T = reopen closed tab.
+    static let t: CGKeyCode = 0x11
+    /// `w` keycode — Cmd+W = close current tab/window.
+    static let w: CGKeyCode = 0x0D
 }

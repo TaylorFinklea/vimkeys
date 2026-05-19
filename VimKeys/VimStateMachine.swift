@@ -655,6 +655,14 @@ struct VimStateMachine {
             // for web developers) for this to take effect; otherwise the
             // chord is a no-op rather than triggering Reader Mode.
             return .postKey(virtualKey: VimKeyCode.r, flags: [.maskCommand, .maskAlternate])
+        case .closeTab:
+            return .postKey(virtualKey: VimKeyCode.w, flags: .maskCommand)
+        case .reopenTab:
+            // Cmd+Shift+T is Safari's "Reopen Last Closed Tab", stack
+            // depth ≈ 10. The shortcut also works for whole-window restore
+            // — if no tab was just closed but a window was, Safari opens
+            // the last closed window instead.
+            return .postKey(virtualKey: VimKeyCode.t, flags: [.maskCommand, .maskShift])
 
         // Mode-affecting commands handled by `resolveCommand`; never
         // reach here.

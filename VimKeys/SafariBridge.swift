@@ -101,30 +101,79 @@ struct SafariBridge {
     }
 
     /// Trigger Safari's `Window → Go to Previous Tab Group` / `Go to
-    /// Next Tab Group` menu items via System Events. Safari ships those
-    /// menu items but no default keyboard shortcut, so VimKeys clicks
-    /// them programmatically when the user types Cmd+Shift+H / Cmd+Shift+L.
+    /// Next Tab Group` menu items by walking Safari's AX tree directly.
     ///
-    /// Requires Accessibility (which VimKeys already needs for its event
-    /// tap). Returns true if the click went through; false if Safari's
-    /// menu structure doesn't match (e.g. an older macOS version where
-    /// the items were named differently) or AX denied.
+    /// **Why not AppleScript via System Events?** That path requires a
+    /// separate "VimKeys → System Events" Automation TCC grant on top
+    /// of the existing "VimKeys → Safari" grant the user already has —
+    /// macOS treats every Apple-Event target as its own grant. The AX
+    /// path piggybacks on Accessibility trust, which the event tap
+    /// already requires, so there are no new permission prompts.
     @discardableResult
     func goToTabGroup(forward: Bool) -> Bool {
-        let itemName = forward ? "Go to Next Tab Group" : "Go to Previous Tab Group"
-        let script = """
-        tell application "System Events"
-            tell process "Safari"
-                try
-                    click menu item "\(itemName)" of menu of menu bar item "Window" of menu bar 1
-                    return true
-                on error
-                    return false
-                end try
-            end tell
-        end tell
-        """
-        return run(script: script) != .error
+        let target = forward ? "Go to Next Tab Group" : "Go to Previous Tab Group"
+        guard let pid = NSWorkspace.shared.runningApplications
+            .first(where: { $0.bundleIdentifier == Self.safariBundleID })?
+            .processIdentifier
+        else { return false }
+
+        let app = AXUIElementCreateApplication(pid)
+        guard let windowMenu = findMenuBarItem(in: app, titled: "Window"),
+              let item = findMenuItem(under: windowMenu, titled: target)
+        else { return false }
+
+        return AXUIElementPerformAction(item, kAXPressAction as CFString) == .success
+    }
+
+    /// Walks the app's menu bar children and returns the bar item with
+    /// the given title (e.g. "Window", "File", "View"). Localized
+    /// builds will need a different lookup — for now we target English.
+    private func findMenuBarItem(in app: AXUIElement, titled title: String) -> AXUIElement? {
+        var menuBarRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXMenuBarAttribute as CFString, &menuBarRef) == .success,
+              let menuBar = menuBarRef
+        else { return nil }
+
+        var childrenRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            menuBar as! AXUIElement,
+            kAXChildrenAttribute as CFString,
+            &childrenRef
+        ) == .success,
+              let children = childrenRef as? [AXUIElement]
+        else { return nil }
+
+        for child in children {
+            var t: CFTypeRef?
+            AXUIElementCopyAttributeValue(child, kAXTitleAttribute as CFString, &t)
+            if (t as? String) == title { return child }
+        }
+        return nil
+    }
+
+    /// Descends into a menu-bar item's child menu and returns the item
+    /// with the given title. Lazy-load nuance: AX populates the menu's
+    /// `Children` only on first traversal, but calling `Copy…` here
+    /// triggers that load synchronously, so we don't need to "open"
+    /// the menu visually.
+    private func findMenuItem(under barItem: AXUIElement, titled title: String) -> AXUIElement? {
+        var menuRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(barItem, kAXChildrenAttribute as CFString, &menuRef) == .success,
+              let menus = menuRef as? [AXUIElement],
+              let menu = menus.first
+        else { return nil }
+
+        var itemsRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(menu, kAXChildrenAttribute as CFString, &itemsRef) == .success,
+              let items = itemsRef as? [AXUIElement]
+        else { return nil }
+
+        for item in items {
+            var t: CFTypeRef?
+            AXUIElementCopyAttributeValue(item, kAXTitleAttribute as CFString, &t)
+            if (t as? String) == title { return item }
+        }
+        return nil
     }
 
     /// Focus a specific tab (by its URL — since AppleScript identifies

@@ -122,6 +122,8 @@ private struct HelpEntry: Identifiable {
         HelpSection(title: "Tabs", entries: [
             HelpEntry(chord: "x", command: "Close current tab", detail: "Cmd+W"),
             HelpEntry(chord: "X", command: "Reopen last closed tab", detail: "Cmd+Shift+T (stack depth ~10)"),
+            HelpEntry(chord: "Cmd+H", command: "Previous tab", detail: "Remaps macOS hide-app; Cmd+Shift+[ underneath"),
+            HelpEntry(chord: "Cmd+L", command: "Next tab", detail: "Remaps Safari focus-address; Cmd+Shift+] underneath"),
         ]),
         HelpSection(title: "Mode", entries: [
             HelpEntry(chord: "i", command: "Enter insert mode", detail: "Manual insert override"),

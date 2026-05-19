@@ -153,4 +153,8 @@ enum VimKeyCode {
     static let t: CGKeyCode = 0x11
     /// `w` keycode — Cmd+W = close current tab/window.
     static let w: CGKeyCode = 0x0D
+    /// `h` keycode — Cmd+H remapped to previous-tab in 0.7.3.
+    static let h: CGKeyCode = 0x04
+    /// `l` keycode — Cmd+L remapped to next-tab in 0.7.3.
+    static let l: CGKeyCode = 0x25
 }

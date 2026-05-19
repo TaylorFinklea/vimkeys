@@ -526,6 +526,47 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.t, flags: [.maskCommand, .maskShift]))
     }
 
+    /// Cmd+H — remap to previous tab (Cmd+Shift+[). Active in any mode
+    /// so users don't have to switch out of insert first.
+    func testCmdHRemapsToPreviousTab() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "h",
+                               flags: .maskCommand, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.leftBracket, flags: [.maskCommand, .maskShift]))
+    }
+
+    func testCmdLRemapsToNextTab() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.l, characters: "l",
+                               flags: .maskCommand, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.rightBracket, flags: [.maskCommand, .maskShift]))
+    }
+
+    /// Critical: the tab remap should ONLY fire when Cmd is the sole
+    /// modifier. Cmd+Shift+H (or any other multi-modifier combo) must
+    /// pass through so the user keeps macOS's "Hide Others" shortcut
+    /// and any other system bindings.
+    func testCmdShiftHPassesThrough() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "H",
+                               flags: [.maskCommand, .maskShift], timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .passThrough)
+    }
+
+    /// Tab remap also fires in insert mode (the new default) — the
+    /// user shouldn't have to leave insert to navigate tabs.
+    func testCmdHFiresInInsertMode() {
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .insertFirst))
+        machine.updateSafariFrontmost(true)
+        XCTAssertEqual(machine.mode, .insert)
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "h",
+                               flags: .maskCommand, timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.leftBracket, flags: [.maskCommand, .maskShift]))
+    }
+
     func testDecideIEntersInsertMode() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)

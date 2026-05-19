@@ -356,6 +356,29 @@ struct VimStateMachine {
             return decideEscape()
         }
 
+        // Cmd+H / Cmd+L — tab navigation. Intercepted in any mode
+        // (including insert) so users don't have to switch to normal
+        // mode first. The exact-modifier check (`== .maskCommand`)
+        // means Cmd+Shift+H still hides app via macOS, Cmd+Option+L
+        // still works for whatever Safari has there, etc. — only the
+        // unmodified Cmd+H/L chord is rerouted.
+        if flags.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift]) == .maskCommand {
+            switch keyCode {
+            case VimKeyCode.h:
+                return VimDecision(intent: .postKey(
+                    virtualKey: VimKeyCode.leftBracket,
+                    flags: [.maskCommand, .maskShift]
+                ))
+            case VimKeyCode.l:
+                return VimDecision(intent: .postKey(
+                    virtualKey: VimKeyCode.rightBracket,
+                    flags: [.maskCommand, .maskShift]
+                ))
+            default:
+                break
+            }
+        }
+
         // Insert mode: every non-Esc key passes through to Safari.
         if case .insert = mode {
             return VimDecision(intent: .passThrough)

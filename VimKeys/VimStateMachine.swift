@@ -384,16 +384,17 @@ struct VimStateMachine {
                 break
             }
         }
-        // Cmd+Shift+H / Cmd+Shift+L — tab-group navigation. Safari's
-        // own menu items ("Go to Previous Tab Group" / "Go to Next Tab
-        // Group") ship no default shortcut, so VimKeys clicks them via
-        // AX from the AppModel callback.
+        // Cmd+Shift+J / Cmd+Shift+K — tab-group navigation. Tab groups
+        // stack vertically in Safari's sidebar, so j/k (down/up) maps
+        // more naturally than h/l. Safari's own menu items ("Go to
+        // Previous / Next Tab Group") ship no default shortcut, so
+        // VimKeys clicks them via AX from the AppModel callback.
         if chordMods == [.maskCommand, .maskShift] {
             switch keyCode {
-            case VimKeyCode.h:
-                return VimDecision(intent: .previousTabGroup)
-            case VimKeyCode.l:
+            case VimKeyCode.j:
                 return VimDecision(intent: .nextTabGroup)
+            case VimKeyCode.k:
+                return VimDecision(intent: .previousTabGroup)
             default:
                 break
             }

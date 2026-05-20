@@ -124,8 +124,8 @@ private struct HelpEntry: Identifiable {
             HelpEntry(chord: "X", command: "Reopen last closed tab", detail: "Cmd+Shift+T (stack depth ~10)"),
             HelpEntry(chord: "Cmd+H", command: "Previous tab", detail: "Remaps macOS hide-app; Cmd+Shift+[ underneath"),
             HelpEntry(chord: "Cmd+L", command: "Next tab", detail: "Remaps Safari focus-address; Cmd+Shift+] underneath"),
-            HelpEntry(chord: "Cmd+Shift+H", command: "Previous tab group", detail: "Clicks Safari's Window menu item via AX"),
-            HelpEntry(chord: "Cmd+Shift+L", command: "Next tab group", detail: "Same — Safari ships no default shortcut"),
+            HelpEntry(chord: "Cmd+Shift+K", command: "Previous tab group", detail: "Up the sidebar; clicks Safari's Window menu via AX"),
+            HelpEntry(chord: "Cmd+Shift+J", command: "Next tab group", detail: "Down the sidebar; Safari ships no default shortcut"),
         ]),
         HelpSection(title: "Mode", entries: [
             HelpEntry(chord: "i", command: "Enter insert mode", detail: "Manual insert override"),

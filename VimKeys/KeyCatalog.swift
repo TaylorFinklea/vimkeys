@@ -157,4 +157,8 @@ enum VimKeyCode {
     static let h: CGKeyCode = 0x04
     /// `l` keycode — Cmd+L remapped to next-tab in 0.7.3.
     static let l: CGKeyCode = 0x25
+    /// `j` keycode — Cmd+Shift+J remapped to next-tab-group in 0.7.6.
+    static let j: CGKeyCode = 0x26
+    /// `k` keycode — Cmd+Shift+K remapped to previous-tab-group in 0.7.6.
+    static let k: CGKeyCode = 0x28
 }

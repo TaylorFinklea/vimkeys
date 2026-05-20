@@ -566,20 +566,20 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(d.intent, .postKey(virtualKey: VimKeyCode.leftBracket, flags: [.maskCommand, .maskShift]))
     }
 
-    /// Cmd+Shift+H emits `.previousTabGroup`; AppModel handles by
-    /// triggering Safari's "Window → Go to Previous Tab Group" menu item.
-    func testCmdShiftHEmitsPreviousTabGroup() {
+    /// Cmd+Shift+K emits `.previousTabGroup` (up the sidebar); AppModel
+    /// handles by triggering Safari's "Go to Previous Tab Group" menu.
+    func testCmdShiftKEmitsPreviousTabGroup() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
-        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "H",
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.k, characters: "K",
                                flags: [.maskCommand, .maskShift], timestamp: baseTimestamp)
         XCTAssertEqual(d.intent, .previousTabGroup)
     }
 
-    func testCmdShiftLEmitsNextTabGroup() {
+    func testCmdShiftJEmitsNextTabGroup() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
-        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.l, characters: "L",
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.j, characters: "J",
                                flags: [.maskCommand, .maskShift], timestamp: baseTimestamp)
         XCTAssertEqual(d.intent, .nextTabGroup)
     }
@@ -587,10 +587,10 @@ final class VimStateMachineTests: XCTestCase {
     /// Critical: adding a third modifier (Option) must NOT match the
     /// tab-group chord. Users still keep all their three-modifier
     /// system bindings.
-    func testCmdShiftOptionHPassesThrough() {
+    func testCmdShiftOptionJPassesThrough() {
         var machine = VimStateMachine(settings: defaultSettings())
         machine.updateSafariFrontmost(true)
-        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h, characters: "H",
+        let d = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.j, characters: "J",
                                flags: [.maskCommand, .maskShift, .maskAlternate], timestamp: baseTimestamp)
         XCTAssertEqual(d.intent, .passThrough)
     }

@@ -18,12 +18,11 @@
 		256EC8ABD4596F84E62A5259 /* SafariBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4108153C9AF722A1FCC16B8F /* SafariBridge.swift */; };
 		25BABCD42029B613E734270D /* SafariRoleClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */; };
 		271A12C9FF9A2195C1E313B6 /* HelpOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */; };
-		292ECE01E5D8CD10C8960E0F /* messages.json in Resources */ = {isa = PBXBuildFile; fileRef = A5743CBB19BACF4AEF064DDF /* messages.json */; };
 		2FC0B88CD3E01789963DCEB5 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164FDFCFEBCBD4F6DA118795 /* SettingsStore.swift */; };
 		388DC58E60E27E5ABC39147A /* SafariBookmarksJSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B432B714509F3EBD49D08C3 /* SafariBookmarksJSONTests.swift */; };
+		38940529B44ECF91F2FBA885 /* toolbar-icon-96.png in Resources */ = {isa = PBXBuildFile; fileRef = 8B77860F1F5F60A85D2F4F32 /* toolbar-icon-96.png */; };
 		3BF71BBDA9A6C3E0CFEBD3C9 /* VimStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */; };
 		41C3903DC6EADB47FFDF37FE /* VimStateMachineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20A92B62749BD7E48E714683 /* VimStateMachineTests.swift */; };
-		424496C7BB84AC0F168358B3 /* toolbar-icon-48.png in Resources */ = {isa = PBXBuildFile; fileRef = 8AE092636234B85CB940E5B6 /* toolbar-icon-48.png */; };
 		42DF4916F2EDA85F07135995 /* EventTapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D5EC39F624E7E18B3A3D86 /* EventTapService.swift */; };
 		492282F39E9367E6403EB8B5 /* SafariRoleClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38843A996B96698BF4ECD02A /* SafariRoleClassifier.swift */; };
 		4BEF66C41C976A864A497E1F /* VimKeysSafariExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2B7F8AF7A15A5241847BA371 /* VimKeysSafariExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -33,6 +32,7 @@
 		6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */; };
 		679926D748503FB62A04AE3A /* SitesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FA6E9F62BE2AD7FCF356518 /* SitesStore.swift */; };
 		6877F1519B66565AB0324D74 /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 285E62FD17E566A4BCF0A2DF /* background.js */; };
+		6B33327D3A94B4AE40E6E8C7 /* toolbar-icon-48.png in Resources */ = {isa = PBXBuildFile; fileRef = B22AD9A0DAE195BCEC5DE88A /* toolbar-icon-48.png */; };
 		79EA3109B68EB6F24E904A6D /* BookmarksStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */; };
 		7C04874311C3634430C699EA /* AXLinkExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4829AA47AA7C3D71186E52C7 /* AXLinkExtractor.swift */; };
 		7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15896B24641581543DBA4FA2 /* LaunchAtLoginController.swift */; };
@@ -41,7 +41,6 @@
 		8DB4853FBB289C68E5CC4D6E /* VomnibarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */; };
 		92BAE5C984A99769E4A08A82 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034AE2C7D5C982723685AA72 /* SettingsView.swift */; };
 		944BE4E1305008D67BBAF0DE /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33234ACF42636EAD98F2BC69 /* SafariWebExtensionHandler.swift */; };
-		9755B5E5BBC4F7D5777BE563 /* toolbar-icon-96.png in Resources */ = {isa = PBXBuildFile; fileRef = 51D6D6F6BD470A38C9015E3D /* toolbar-icon-96.png */; };
 		9DEADF1AEF0CEDAF8290A2B1 /* VomnibarWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */; };
 		B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */; };
 		C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D59CB50E2605937670B3A1C /* EventTapEngine.swift */; };
@@ -120,7 +119,6 @@
 		4F228CD26B6C9F6D5A404A12 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4FC92EA860523A408A31F8AA /* VimKeys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VimKeys.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		514129D1C8FA0A6FD0F6AD0E /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
-		51D6D6F6BD470A38C9015E3D /* toolbar-icon-96.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-96.png"; sourceTree = "<group>"; };
 		57CDAC30AF31E71F59144F6B /* VimStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimStateMachine.swift; sourceTree = "<group>"; };
 		5E8FF24F6720B9B25FD71145 /* SafariBookmarksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarksTests.swift; sourceTree = "<group>"; };
 		6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimKeysApp.swift; sourceTree = "<group>"; };
@@ -129,13 +127,13 @@
 		733859216D77D02BFEEFD8C2 /* SitesStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitesStoreTests.swift; sourceTree = "<group>"; };
 		7E9EF346AE2E85D479CE5E34 /* HelpOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpOverlayWindow.swift; sourceTree = "<group>"; };
 		81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintCoordinator.swift; sourceTree = "<group>"; };
-		8AE092636234B85CB940E5B6 /* toolbar-icon-48.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-48.png"; sourceTree = "<group>"; };
+		8B77860F1F5F60A85D2F4F32 /* toolbar-icon-96.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-96.png"; sourceTree = "<group>"; };
 		8D316DCF978DDD42EA98898E /* SafariObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariObserver.swift; sourceTree = "<group>"; };
 		8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayout.swift; sourceTree = "<group>"; };
 		942AB09B3B5A4820F73B44E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9A1368746B58D900849CEC8E /* SafariBookmarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarks.swift; sourceTree = "<group>"; };
-		A5743CBB19BACF4AEF064DDF /* messages.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = messages.json; sourceTree = "<group>"; };
 		A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
+		B22AD9A0DAE195BCEC5DE88A /* toolbar-icon-48.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "toolbar-icon-48.png"; sourceTree = "<group>"; };
 		B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayoutTests.swift; sourceTree = "<group>"; };
 		CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayManager.swift; sourceTree = "<group>"; };
 		D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarCoordinator.swift; sourceTree = "<group>"; };
@@ -174,18 +172,10 @@
 			children = (
 				285E62FD17E566A4BCF0A2DF /* background.js */,
 				F92DFCA0F6060F895949E212 /* manifest.json */,
-				11A6C287AE432EC1E2E91392 /* _locales */,
-				8C8C699746B6243AAD8A7EE4 /* images */,
+				B22AD9A0DAE195BCEC5DE88A /* toolbar-icon-48.png */,
+				8B77860F1F5F60A85D2F4F32 /* toolbar-icon-96.png */,
 			);
 			path = Resources;
-			sourceTree = "<group>";
-		};
-		11A6C287AE432EC1E2E91392 /* _locales */ = {
-			isa = PBXGroup;
-			children = (
-				5DE98FC2B211550AC4286E22 /* en */,
-			);
-			path = _locales;
 			sourceTree = "<group>";
 		};
 		480A80B1160951E4F0CF4FFC /* VimKeysSafariExtension */ = {
@@ -196,14 +186,6 @@
 				1166973C8C10426CBE0D6DA5 /* Resources */,
 			);
 			path = VimKeysSafariExtension;
-			sourceTree = "<group>";
-		};
-		5DE98FC2B211550AC4286E22 /* en */ = {
-			isa = PBXGroup;
-			children = (
-				A5743CBB19BACF4AEF064DDF /* messages.json */,
-			);
-			path = en;
 			sourceTree = "<group>";
 		};
 		658C5A760474DCB453078D22 /* Products */ = {
@@ -249,15 +231,6 @@
 				B324E757EF9125B720148469 /* Settings */,
 			);
 			path = VimKeys;
-			sourceTree = "<group>";
-		};
-		8C8C699746B6243AAD8A7EE4 /* images */ = {
-			isa = PBXGroup;
-			children = (
-				8AE092636234B85CB940E5B6 /* toolbar-icon-48.png */,
-				51D6D6F6BD470A38C9015E3D /* toolbar-icon-96.png */,
-			);
-			path = images;
 			sourceTree = "<group>";
 		};
 		93C7BF5A9FD5BEC6DDF0CD8B /* VimKeysTests */ = {
@@ -407,9 +380,8 @@
 			files = (
 				6877F1519B66565AB0324D74 /* background.js in Resources */,
 				C34E482F7A33D12A089F198B /* manifest.json in Resources */,
-				292ECE01E5D8CD10C8960E0F /* messages.json in Resources */,
-				424496C7BB84AC0F168358B3 /* toolbar-icon-48.png in Resources */,
-				9755B5E5BBC4F7D5777BE563 /* toolbar-icon-96.png in Resources */,
+				6B33327D3A94B4AE40E6E8C7 /* toolbar-icon-48.png in Resources */,
+				38940529B44ECF91F2FBA885 /* toolbar-icon-96.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -536,7 +508,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -554,7 +526,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.7.6;
+				MARKETING_VERSION = 0.7.7;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -720,7 +692,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -732,7 +704,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MARKETING_VERSION = 0.7.6;
+				MARKETING_VERSION = 0.7.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

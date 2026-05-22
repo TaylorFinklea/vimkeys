@@ -31,6 +31,10 @@ enum SafariBookmarks {
     enum ReadError: Error, Equatable {
         case fileMissing
         case malformed
+        /// The file exists but macOS denied the read — the real-world
+        /// cause is the user not having granted Full Disk Access, which
+        /// `~/Library/Safari/Bookmarks.plist` requires.
+        case permissionDenied
     }
 
     /// `~/Documents/VimKeys/bookmarks.html`. The user picks this path when
@@ -82,14 +86,23 @@ enum SafariBookmarks {
         return .success(entries)
     }
 
-    /// Reads the JSON snapshot dropped into the App Group container by
-    /// VimKeysSafariExtension. This is the 0.7.0 live-sync path —
-    /// preferred over the HTML export when present.
+    /// Reads Safari's own bookmark store at `~/Library/Safari/Bookmarks.plist`.
+    /// This is the live-sync path — Safari rewrites the file whenever the
+    /// user adds, edits, or removes a bookmark, so VimKeys always sees
+    /// current data with no manual export step.
     ///
-    /// **Shape:** `[{"title": "...", "url": "..."}, ...]`. Identical
-    /// semantics to the HTML reader (folder hierarchy already flattened
-    /// by the JS side; non-navigable schemes filtered).
-    static func readJSON(at url: URL) -> Result<[Entry], ReadError> {
+    /// `~/Library/Safari` is TCC-protected, so the read only succeeds when
+    /// the user has granted VimKeys Full Disk Access; otherwise the read
+    /// is denied and this returns `.permissionDenied`.
+    ///
+    /// **Format:** a binary plist whose root is a `WebBookmarkTypeList`
+    /// dict. Every node carries a `WebBookmarkType`: `...TypeList` (a
+    /// folder, with a `Children` array), `...TypeLeaf` (a bookmark, with a
+    /// `URLString` and a nested `URIDictionary` holding `title`), or
+    /// `...TypeProxy` (History and similar — skipped). The
+    /// `com.apple.ReadingList` folder is skipped to match what Safari's
+    /// own HTML export omits.
+    static func readPlist(at url: URL) -> Result<[Entry], ReadError> {
         let data: Data
         do {
             data = try Data(contentsOf: url)
@@ -98,25 +111,55 @@ enum SafariBookmarks {
                error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError {
                 return .failure(.fileMissing)
             }
+            if error.domain == NSCocoaErrorDomain,
+               error.code == NSFileReadNoPermissionError {
+                return .failure(.permissionDenied)
+            }
             return .failure(.malformed)
         }
-        guard let raw = try? JSONSerialization.jsonObject(with: data),
-              let array = raw as? [[String: Any]] else {
+
+        guard let root = try? PropertyListSerialization.propertyList(
+                from: data, options: [], format: nil
+            ),
+            let rootDict = root as? [String: Any],
+            rootDict["WebBookmarkType"] as? String == "WebBookmarkTypeList"
+        else {
             return .failure(.malformed)
         }
 
         var entries: [Entry] = []
-        for item in array {
-            guard let urlString = item["url"] as? String,
-                  let url = URL(string: urlString) else { continue }
-            guard let scheme = url.scheme?.lowercased(),
+        collectLeaves(in: rootDict, into: &entries)
+        return .success(entries)
+    }
+
+    /// Depth-first walk of one bookmark-tree node, appending navigable
+    /// leaves to `entries`. Folder hierarchy is discarded — the vomnibar
+    /// filters by title, matching the HTML and JSON readers.
+    private static func collectLeaves(in node: [String: Any], into entries: inout [Entry]) {
+        switch node["WebBookmarkType"] as? String {
+        case "WebBookmarkTypeLeaf":
+            guard let urlString = node["URLString"] as? String,
+                  let url = URL(string: urlString),
+                  let scheme = url.scheme?.lowercased(),
                   scheme == "http" || scheme == "https" || scheme == "ftp" || scheme == "file"
-            else { continue }
-            let rawTitle = (item["title"] as? String) ?? ""
+            else { return }
+            let rawTitle = (node["URIDictionary"] as? [String: Any])?["title"] as? String ?? ""
             let title = rawTitle.isEmpty ? (url.host ?? urlString) : rawTitle
             entries.append(Entry(title: title, url: url))
+        case "WebBookmarkTypeList":
+            // Reading List is a list node Safari's HTML export omits — its
+            // entries are saved articles, not bookmarks.
+            guard node["Title"] as? String != "com.apple.ReadingList",
+                  let children = node["Children"] as? [[String: Any]]
+            else { return }
+            for child in children {
+                collectLeaves(in: child, into: &entries)
+            }
+        default:
+            // WebBookmarkTypeProxy (History, Bonjour) and anything
+            // unrecognized carry no navigable URL.
+            return
         }
-        return .success(entries)
     }
 
     /// Pulls every `<A HREF="…">title</A>` from the document. Case-

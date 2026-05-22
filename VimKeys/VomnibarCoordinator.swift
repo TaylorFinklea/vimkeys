@@ -58,6 +58,9 @@ final class VomnibarCoordinator {
                     message = SafariBookmarks.exportInstructions
                 case .malformed:
                     message = "Couldn't parse bookmarks file. Try re-exporting from Safari."
+                case .permissionDenied:
+                    message = "Grant VimKeys Full Disk Access so it can read Safari "
+                        + "bookmarks (Privacy & Security \u{2192} Full Disk Access)."
                 }
                 onError?(message)
                 exit()

@@ -5,8 +5,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 6.0
-    MARKETING_VERSION: 0.7.7
-    CURRENT_PROJECT_VERSION: 19
+    MARKETING_VERSION: 0.7.8
+    CURRENT_PROJECT_VERSION: 20
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -20,9 +20,6 @@ targets:
       - path: VimKeys
     dependencies:
       - package: Sparkle
-      - target: VimKeysSafariExtension
-        embed: true
-        codeSign: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.taylorfinklea.vimkeys
@@ -36,24 +33,21 @@ targets:
         # Without this, every xcodebuild produces a fresh adhoc cdhash and
         # Input Monitoring / Accessibility grants reset on each install.
         # V-M6 layers notarization on top; the signing identity itself does
-        # not change between local dev and the released artifact.
-        # CODE_SIGN_ENTITLEMENTS is Release-only because Debug builds
-        # don't have provisioning profiles for the App Group, and Xcode
-        # refuses to compile entitlement claims without one. The runtime
-        # consequence: Debug builds always fall back to the HTML
-        # bookmark watcher.
+        # not change between local dev and the released artifact. The app
+        # is non-sandboxed and claims no entitlements, so no entitlements
+        # file is needed — TCC (Input Monitoring, Accessibility, Apple
+        # Events, Full Disk Access) is granted at runtime, not via claims.
         Release:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: "Developer ID Application"
           DEVELOPMENT_TEAM: K7CBQW6MPG
           OTHER_CODE_SIGN_FLAGS: "--timestamp=none"
-          CODE_SIGN_ENTITLEMENTS: VimKeys/VimKeys.entitlements
     info:
       path: VimKeys/Info.plist
       properties:
         CFBundleDisplayName: VimKeys
-        CFBundleShortVersionString: "0.7.7"
-        CFBundleVersion: "19"
+        CFBundleShortVersionString: "0.7.8"
+        CFBundleVersion: "20"
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
         NSAppleEventsUsageDescription: "VimKeys uses Apple Events to read Safari's open tabs and URL, copy the current page link to the clipboard, and open URLs you type in the vomnibar (o / O / T / yy / p / P)."
@@ -70,44 +64,6 @@ targets:
       gatherCoverageData: false
       testTargets:
         - VimKeysTests
-  VimKeysSafariExtension:
-    type: app-extension
-    platform: macOS
-    deploymentTarget: "14.0"
-    sources:
-      - path: VimKeysSafariExtension
-        excludes:
-          - "VimKeysSafariExtension.entitlements"
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.taylorfinklea.vimkeys.SafariExtension
-        PRODUCT_NAME: VimKeysSafariExtension
-        GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: VimKeysSafariExtension/Info.plist
-        CODE_SIGN_STYLE: Automatic
-        SKIP_INSTALL: YES
-      configs:
-        # Same Developer ID story as the main app — TCC bindings need to
-        # survive rebuilds, and notarization checks the signing identity.
-        # Entitlements are Release-only for the same reason as the main
-        # app target above.
-        Release:
-          CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: "Developer ID Application"
-          DEVELOPMENT_TEAM: K7CBQW6MPG
-          OTHER_CODE_SIGN_FLAGS: "--timestamp=none"
-          CODE_SIGN_ENTITLEMENTS: VimKeysSafariExtension/VimKeysSafariExtension.entitlements
-    info:
-      path: VimKeysSafariExtension/Info.plist
-      properties:
-        CFBundleDisplayName: VimKeys Bookmark Sync
-        CFBundleShortVersionString: "0.7.7"
-        CFBundleVersion: "19"
-        CFBundlePackageType: XPC!
-        LSMinimumSystemVersion: "14.0"
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.Safari.web-extension
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SafariWebExtensionHandler
   VimKeysTests:
     type: bundle.unit-test
     platform: macOS

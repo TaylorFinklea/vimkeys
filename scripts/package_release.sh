@@ -71,9 +71,8 @@ if [[ -z "${SKIP_CODESIGN}" ]]; then
   echo "  identity: ${DEVELOPER_ID}"
 
   # First pass: deep-sign everything (catches Sparkle's nested XPC
-  # services and framework binaries) with no entitlements. We'll
-  # overwrite the signatures on the main app + extension below with the
-  # correct entitlements files.
+  # services and framework binaries). The outer app bundle is re-signed
+  # last so its signature wraps the already-signed nested components.
   /usr/bin/codesign \
     --force \
     --options runtime \
@@ -82,31 +81,16 @@ if [[ -z "${SKIP_CODESIGN}" ]]; then
     --deep \
     "${APP_PATH}"
 
-  # Re-sign the Safari Web Extension with its sandbox + App Group
-  # entitlements. Must happen BEFORE the main app re-sign so the
-  # outer signature wraps the updated extension signature.
-  APPEX_PATH="${APP_PATH}/Contents/PlugIns/VimKeysSafariExtension.appex"
-  if [[ -d "${APPEX_PATH}" ]]; then
-    echo "Re-signing extension with sandbox + App Group entitlements"
-    /usr/bin/codesign \
-      --force \
-      --options runtime \
-      --timestamp \
-      --sign "${DEVELOPER_ID}" \
-      --entitlements "${ROOT_DIR}/VimKeysSafariExtension/VimKeysSafariExtension.entitlements" \
-      "${APPEX_PATH}"
-  fi
-
-  # Re-sign the main app bundle with its App Group entitlement so
-  # `containerURL(forSecurityApplicationGroupIdentifier:)` works at
-  # runtime. (--deep above gave us a no-entitlements signature.)
-  echo "Re-signing main app with App Group entitlement"
+  # Re-sign the outer app bundle last. VimKeys is non-sandboxed and
+  # claims no entitlements (TCC — Input Monitoring, Accessibility, Apple
+  # Events, Full Disk Access — is granted at runtime, not via claims),
+  # so no entitlements file is passed.
+  echo "Re-signing main app bundle"
   /usr/bin/codesign \
     --force \
     --options runtime \
     --timestamp \
     --sign "${DEVELOPER_ID}" \
-    --entitlements "${ROOT_DIR}/VimKeys/VimKeys.entitlements" \
     "${APP_PATH}"
 
   /usr/bin/codesign --verify --deep --strict --verbose=2 "${APP_PATH}"

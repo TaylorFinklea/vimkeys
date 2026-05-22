@@ -11,7 +11,7 @@ final class BookmarksStoreTests: XCTestCase {
         let file = dir.appendingPathComponent("bookmarks.html")
         try writeMinimalExport(at: file)
 
-        let store = BookmarksStore(htmlPath: file, containerPath: nil)
+        let store = BookmarksStore(htmlPath: file, plistPath: nil)
         store.start()
         defer { store.stop() }
 
@@ -30,7 +30,7 @@ final class BookmarksStoreTests: XCTestCase {
         let file = dir.appendingPathComponent("bookmarks.html")
         // Deliberately do not create the file.
 
-        let store = BookmarksStore(htmlPath: file, containerPath: nil)
+        let store = BookmarksStore(htmlPath: file, plistPath: nil)
         store.start()
         defer { store.stop() }
 
@@ -46,7 +46,7 @@ final class BookmarksStoreTests: XCTestCase {
         let file = dir.appendingPathComponent("bookmarks.html")
         try writeMinimalExport(at: file, sites: [("Apple", "https://apple.com/")])
 
-        let store = BookmarksStore(htmlPath: file, containerPath: nil)
+        let store = BookmarksStore(htmlPath: file, plistPath: nil)
         store.start()
         defer { store.stop() }
 
@@ -64,44 +64,41 @@ final class BookmarksStoreTests: XCTestCase {
         waitForTitles(in: store, expected: ["GitHub", "Swift"])
     }
 
-    /// When the App Group container has a JSON snapshot, it wins over
-    /// the HTML export. This is the 0.7.0 live-sync path.
-    func testContainerJSONIsPreferredOverHTML() throws {
+    /// When Safari's `Bookmarks.plist` is readable, it wins over the HTML
+    /// export — it's the always-fresh live-sync source.
+    func testPlistIsPreferredOverHTML() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let htmlFile = dir.appendingPathComponent("bookmarks.html")
-        let containerFile = dir.appendingPathComponent("bookmarks.json")
+        let plistFile = dir.appendingPathComponent("Bookmarks.plist")
 
         try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
-        let json: [[String: Any]] = [
-            ["title": "FromExtension", "url": "https://ext.example/"],
-        ]
-        try JSONSerialization.data(withJSONObject: json).write(to: containerFile)
+        try bookmarksPlistData(sites: [("FromPlist", "https://plist.example/")])
+            .write(to: plistFile)
 
-        let store = BookmarksStore(htmlPath: htmlFile, containerPath: containerFile)
+        let store = BookmarksStore(htmlPath: htmlFile, plistPath: plistFile)
         store.start()
         defer { store.stop() }
 
         guard case .success(let entries) = store.current() else {
-            return XCTFail("expected success from container")
+            return XCTFail("expected success from plist")
         }
-        XCTAssertEqual(entries.map(\.title), ["FromExtension"])
+        XCTAssertEqual(entries.map(\.title), ["FromPlist"])
+        XCTAssertTrue(store.isUsingLiveSync)
     }
 
-    /// When the container path is configured but no JSON file exists,
-    /// fall back to HTML. This matches the typical user state after
-    /// installing 0.7.0 but before enabling the Safari extension (or
-    /// before registering the App Group on developer.apple.com).
-    func testFallsBackToHTMLWhenContainerMissing() throws {
+    /// When the plist path is configured but the file doesn't exist,
+    /// fall back to the HTML export.
+    func testFallsBackToHTMLWhenPlistMissing() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let htmlFile = dir.appendingPathComponent("bookmarks.html")
-        let containerFile = dir.appendingPathComponent("bookmarks.json")
-        // Container file deliberately not created.
+        let plistFile = dir.appendingPathComponent("Bookmarks.plist")
+        // Plist file deliberately not created.
 
         try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
 
-        let store = BookmarksStore(htmlPath: htmlFile, containerPath: containerFile)
+        let store = BookmarksStore(htmlPath: htmlFile, plistPath: plistFile)
         store.start()
         defer { store.stop() }
 
@@ -109,38 +106,90 @@ final class BookmarksStoreTests: XCTestCase {
             return XCTFail("expected HTML fallback")
         }
         XCTAssertEqual(entries.map(\.title), ["FromHTML"])
-        XCTAssertFalse(store.isUsingExtension)
+        XCTAssertFalse(store.isUsingLiveSync)
     }
 
-    /// When the extension drops a fresh container snapshot, the watcher
-    /// should pick it up and switch the cache from HTML to JSON.
-    func testWatcherPicksUpContainerJSON() throws {
+    /// An unreadable plist (Full Disk Access not granted) with an HTML
+    /// export present degrades gracefully to HTML — no error surfaced,
+    /// the user keeps working.
+    func testFallsBackToHTMLWhenPlistUnreadable() throws {
         let dir = try makeTempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let htmlFile = dir.appendingPathComponent("bookmarks.html")
-        let containerFile = dir.appendingPathComponent("bookmarks.json")
-        try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
+        let plistFile = dir.appendingPathComponent("Bookmarks.plist")
 
-        let store = BookmarksStore(htmlPath: htmlFile, containerPath: containerFile)
+        try writeMinimalExport(at: htmlFile, sites: [("FromHTML", "https://html.example/")])
+        try bookmarksPlistData(sites: [("FromPlist", "https://plist.example/")])
+            .write(to: plistFile)
+        try makeUnreadable(plistFile)
+        defer { try? makeReadable(plistFile) }
+
+        let store = BookmarksStore(htmlPath: htmlFile, plistPath: plistFile)
         store.start()
         defer { store.stop() }
-        XCTAssertEqual(try titles(of: store), ["FromHTML"])
 
-        // Extension dropping a snapshot:
-        let json: [[String: Any]] = [
-            ["title": "Live", "url": "https://live.example/"],
-        ]
-        try JSONSerialization.data(withJSONObject: json).write(to: containerFile)
+        guard case .success(let entries) = store.current() else {
+            return XCTFail("expected HTML fallback")
+        }
+        XCTAssertEqual(entries.map(\.title), ["FromHTML"])
+        XCTAssertFalse(store.isUsingLiveSync)
+    }
 
-        waitForTitles(in: store, expected: ["Live"])
-        XCTAssertTrue(store.isUsingExtension)
+    /// An unreadable plist with no HTML export to fall back on surfaces
+    /// `.permissionDenied` — the vomnibar then tells the user to grant
+    /// Full Disk Access rather than to export bookmarks.
+    func testPermissionDeniedSurfacedWhenPlistUnreadableAndNoHTML() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let htmlFile = dir.appendingPathComponent("bookmarks.html")
+        let plistFile = dir.appendingPathComponent("Bookmarks.plist")
+        // HTML file deliberately not created.
+
+        try bookmarksPlistData(sites: [("FromPlist", "https://plist.example/")])
+            .write(to: plistFile)
+        try makeUnreadable(plistFile)
+        defer { try? makeReadable(plistFile) }
+
+        let store = BookmarksStore(htmlPath: htmlFile, plistPath: plistFile)
+        store.start()
+        defer { store.stop() }
+
+        XCTAssertEqual(store.current(), .failure(.permissionDenied))
+    }
+
+    /// When Safari rewrites `Bookmarks.plist`, the watcher should pick it
+    /// up and refresh the cache without a process restart.
+    func testWatcherPicksUpPlist() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let htmlFile = dir.appendingPathComponent("bookmarks.html")
+        let plistFile = dir.appendingPathComponent("Bookmarks.plist")
+        try bookmarksPlistData(sites: [("Before", "https://before.example/")])
+            .write(to: plistFile)
+
+        let store = BookmarksStore(htmlPath: htmlFile, plistPath: plistFile)
+        store.start()
+        defer { store.stop() }
+        XCTAssertEqual(try titles(of: store), ["Before"])
+
+        // Safari rewriting its store (atomic replace):
+        let tmp = dir.appendingPathComponent("Bookmarks.plist.tmp")
+        try bookmarksPlistData(sites: [("After", "https://after.example/")]).write(to: tmp)
+        try FileManager.default.replaceItem(
+            at: plistFile, withItemAt: tmp,
+            backupItemName: nil, options: [],
+            resultingItemURL: nil
+        )
+
+        waitForTitles(in: store, expected: ["After"])
+        XCTAssertTrue(store.isUsingLiveSync)
     }
 
     /// `folder` must point at the HTML parent dir — the menu item
     /// reveals that in Finder. A regression here would Finder-bounce.
     func testFolderIsParentOfHTMLPath() throws {
         let path = URL(fileURLWithPath: "/tmp/foo/bar/bookmarks.html")
-        let store = BookmarksStore(htmlPath: path, containerPath: nil)
+        let store = BookmarksStore(htmlPath: path, plistPath: nil)
         XCTAssertEqual(store.folder.path, "/tmp/foo/bar")
     }
 
@@ -167,6 +216,38 @@ final class BookmarksStoreTests: XCTestCase {
         }
         html += "</DL>\n"
         return Data(html.utf8)
+    }
+
+    /// Builds a Safari-shaped binary `Bookmarks.plist` with a flat list
+    /// of leaf bookmarks.
+    private func bookmarksPlistData(sites: [(String, String)]) throws -> Data {
+        let children: [[String: Any]] = sites.map { title, url in
+            [
+                "WebBookmarkType": "WebBookmarkTypeLeaf",
+                "URLString": url,
+                "URIDictionary": ["title": title],
+            ]
+        }
+        let root: [String: Any] = [
+            "WebBookmarkType": "WebBookmarkTypeList",
+            "Title": "",
+            "Children": children,
+        ]
+        return try PropertyListSerialization.data(
+            fromPropertyList: root, format: .binary, options: 0
+        )
+    }
+
+    private func makeUnreadable(_ url: URL) throws {
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0], ofItemAtPath: url.path
+        )
+    }
+
+    private func makeReadable(_ url: URL) throws {
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o644], ofItemAtPath: url.path
+        )
     }
 
     private func titles(of store: BookmarksStore) throws -> [String] {

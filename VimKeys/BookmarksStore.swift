@@ -2,64 +2,61 @@ import Foundation
 
 /// Cache + filesystem watcher fronting the two bookmark sources:
 ///
-/// 1. **App Group container** — JSON dropped by VimKeysSafariExtension
-///    whenever Safari's bookmarks change. The live-sync path; preferred
-///    when present. Requires the user to enable the extension in Safari
-///    → Settings → Extensions (and for the App Group
-///    `group.io.taylorfinklea.vimkeys` to be registered on
-///    developer.apple.com for team K7CBQW6MPG).
+/// 1. **Safari's `Bookmarks.plist`** — `~/Library/Safari/Bookmarks.plist`,
+///    Safari's own live bookmark store. The preferred source: always
+///    fresh, no manual step. Reading it requires the user to grant
+///    VimKeys Full Disk Access, since `~/Library/Safari` is TCC-protected.
 /// 2. **User-exported HTML** at `~/Documents/VimKeys/bookmarks.html`.
-///    The fallback path; always available with no extension setup.
+///    The fallback path; always available with no permission grant, but
+///    the user must re-export from Safari whenever bookmarks change.
 ///
-/// The store watches both source directories. On any filesystem event
-/// it re-reads, preferring container over HTML. This way the extension
-/// silently upgrades the experience when present, and disabling it
-/// (or never enabling it) gracefully degrades to the export workflow.
+/// The store watches both source directories. On any filesystem event it
+/// re-reads, preferring the live plist over the HTML export. A user who
+/// grants Full Disk Access gets always-fresh bookmarks; one who declines
+/// it degrades gracefully to the export workflow.
 ///
-/// **Why watch the directory, not the file?** Safari's export uses an
-/// atomic write-then-rename; the file descriptor for the old inode goes
-/// stale and the rename event doesn't fire on the new one. Watching the
-/// parent directory survives the swap. The container path uses the same
-/// pattern for parallel reasons.
+/// **Why watch the directory, not the file?** Both Safari's export and
+/// its `Bookmarks.plist` rewrites use an atomic write-then-rename; the
+/// file descriptor for the old inode goes stale and the rename event
+/// doesn't fire on the new one. Watching the parent directory survives
+/// the inode swap.
 final class BookmarksStore: @unchecked Sendable {
     static let shared = BookmarksStore()
 
-    /// App Group identifier matching the extension. Duplicated rather
-    /// than imported because the extension is a separate target and the
-    /// main app can't link its module.
-    static let appGroupIdentifier = "group.io.taylorfinklea.vimkeys"
-    static let containerFileName = "bookmarks.json"
+    /// `~/Library/Safari/Bookmarks.plist` — Safari's own bookmark store.
+    static var defaultPlistPath: URL {
+        FileManager.default
+            .homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Safari/Bookmarks.plist")
+    }
+
+    /// Which source the current cache was read from.
+    private enum Source {
+        case plist
+        case html
+        case none
+    }
 
     private let htmlPath: URL
-    private let containerPath: URL?
+    private let plistPath: URL?
     private let lock = NSLock()
     private var cached: Result<[SafariBookmarks.Entry], SafariBookmarks.ReadError>
+    private var cachedSource: Source = .none
     private var htmlSource: DispatchSourceFileSystemObject?
     private var htmlFD: Int32 = -1
-    private var containerSource: DispatchSourceFileSystemObject?
-    private var containerFD: Int32 = -1
+    private var plistSource: DispatchSourceFileSystemObject?
+    private var plistFD: Int32 = -1
     private var pendingRefresh: DispatchWorkItem?
     private let refreshQueue: DispatchQueue
 
     init(
         htmlPath: URL = SafariBookmarks.defaultPath,
-        containerPath: URL? = BookmarksStore.defaultContainerPath
+        plistPath: URL? = BookmarksStore.defaultPlistPath
     ) {
         self.htmlPath = htmlPath
-        self.containerPath = containerPath
+        self.plistPath = plistPath
         self.cached = .failure(.fileMissing)
         self.refreshQueue = DispatchQueue(label: "io.taylorfinklea.vimkeys.bookmarks-store")
-    }
-
-    /// Where the Safari Web Extension drops its JSON snapshot. Nil when
-    /// the App Group isn't registered for this build — Debug builds
-    /// always, and Release builds where the user hasn't completed the
-    /// developer.apple.com setup. `nil` here means "skip the container
-    /// path entirely; just use HTML".
-    static var defaultContainerPath: URL? {
-        FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
-        )?.appendingPathComponent(containerFileName)
     }
 
     /// HTML bookmarks folder (parent of `bookmarks.html`). Surfaced so
@@ -69,13 +66,13 @@ final class BookmarksStore: @unchecked Sendable {
         htmlPath.deletingLastPathComponent()
     }
 
-    /// True when the extension's container is wired up (i.e. App Group
-    /// available AND the JSON file exists). Useful as a UI hint: when
-    /// false, surface the "export your bookmarks" path; when true, the
-    /// extension is doing its job.
-    var isUsingExtension: Bool {
-        guard let container = containerPath else { return false }
-        return FileManager.default.fileExists(atPath: container.path)
+    /// True when the current cache came from Safari's live `Bookmarks.plist`
+    /// rather than the HTML export. A UI hint: when false, the user is on
+    /// the manual export workflow (or hasn't granted Full Disk Access).
+    var isUsingLiveSync: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cachedSource == .plist
     }
 
     /// Returns the most-recently-cached read result. Cheap — no disk I/O.
@@ -91,21 +88,50 @@ final class BookmarksStore: @unchecked Sendable {
         ensureDirectoryExists()
         refresh()
         attachHTMLWatcher()
-        attachContainerWatcher()
+        attachPlistWatcher()
     }
 
-    /// Force a re-read. Container preferred over HTML when present.
+    /// Force a re-read. The live plist is preferred over the HTML export.
     func refresh() {
-        let result: Result<[SafariBookmarks.Entry], SafariBookmarks.ReadError>
-        if let container = containerPath,
-           FileManager.default.fileExists(atPath: container.path) {
-            result = SafariBookmarks.readJSON(at: container)
-        } else {
-            result = SafariBookmarks.read(at: htmlPath)
-        }
+        let outcome = readPreferredSource()
         lock.lock()
-        cached = result
+        cached = outcome.result
+        cachedSource = outcome.source
         lock.unlock()
+    }
+
+    /// Reads the live plist first, falling back to the HTML export. When
+    /// both fail, surfaces whichever error is most actionable: a denied
+    /// plist read (`.permissionDenied` → grant Full Disk Access) outranks
+    /// the HTML error (→ export your bookmarks), since live sync is the
+    /// path we want users on.
+    private func readPreferredSource()
+        -> (result: Result<[SafariBookmarks.Entry], SafariBookmarks.ReadError>, source: Source)
+    {
+        guard let plistPath else {
+            return (SafariBookmarks.read(at: htmlPath), sourceForHTMLOnly())
+        }
+
+        let plistResult = SafariBookmarks.readPlist(at: plistPath)
+        if case .success = plistResult {
+            return (plistResult, .plist)
+        }
+
+        let htmlResult = SafariBookmarks.read(at: htmlPath)
+        if case .success = htmlResult {
+            return (htmlResult, .html)
+        }
+        if case .failure(.permissionDenied) = plistResult {
+            return (.failure(.permissionDenied), .none)
+        }
+        return (htmlResult, .none)
+    }
+
+    private func sourceForHTMLOnly() -> Source {
+        if case .success = SafariBookmarks.read(at: htmlPath) {
+            return .html
+        }
+        return .none
     }
 
     /// Tear both watchers down — used by tests; production code keeps
@@ -113,8 +139,8 @@ final class BookmarksStore: @unchecked Sendable {
     func stop() {
         htmlSource?.cancel()
         htmlSource = nil
-        containerSource?.cancel()
-        containerSource = nil
+        plistSource?.cancel()
+        plistSource = nil
     }
 
     private func ensureDirectoryExists() {
@@ -134,13 +160,15 @@ final class BookmarksStore: @unchecked Sendable {
         htmlSource = result.source
     }
 
-    private func attachContainerWatcher() {
-        guard containerSource == nil,
-              let container = containerPath else { return }
-        let result = openDirectoryWatcher(at: container.deletingLastPathComponent().path)
+    /// Watches `~/Library/Safari`. When Full Disk Access isn't granted,
+    /// `open()` on that directory fails and the watcher silently no-ops —
+    /// `refresh()` still attempts the read and surfaces `.permissionDenied`.
+    private func attachPlistWatcher() {
+        guard plistSource == nil, let plistPath else { return }
+        let result = openDirectoryWatcher(at: plistPath.deletingLastPathComponent().path)
         guard let result else { return }
-        containerFD = result.fd
-        containerSource = result.source
+        plistFD = result.fd
+        plistSource = result.source
     }
 
     private func openDirectoryWatcher(at path: String)
@@ -163,9 +191,9 @@ final class BookmarksStore: @unchecked Sendable {
         return (fd, source)
     }
 
-    /// Debounce — Safari's export emits several directory events
+    /// Debounce — an atomic replace emits several directory events
     /// back-to-back. Without coalescing we'd re-parse the file 3-4
-    /// times per export.
+    /// times per write.
     private func scheduleRefresh() {
         pendingRefresh?.cancel()
         let work = DispatchWorkItem { [weak self] in

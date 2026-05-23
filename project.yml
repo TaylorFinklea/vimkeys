@@ -5,8 +5,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: 6.0
-    MARKETING_VERSION: 0.7.8
-    CURRENT_PROJECT_VERSION: 20
+    MARKETING_VERSION: 0.7.9
+    CURRENT_PROJECT_VERSION: 21
 packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
@@ -33,21 +33,23 @@ targets:
         # Without this, every xcodebuild produces a fresh adhoc cdhash and
         # Input Monitoring / Accessibility grants reset on each install.
         # V-M6 layers notarization on top; the signing identity itself does
-        # not change between local dev and the released artifact. The app
-        # is non-sandboxed and claims no entitlements, so no entitlements
-        # file is needed — TCC (Input Monitoring, Accessibility, Apple
-        # Events, Full Disk Access) is granted at runtime, not via claims.
+        # not change between local dev and the released artifact. The
+        # entitlements file claims `com.apple.security.automation.apple-events`
+        # so the hardened-runtime TCC policy will fire the "control Safari"
+        # prompt; without it AE is silently denied and the URL poll that
+        # drives the per-site ignorelist + Esc-Esc suspend stops working.
         Release:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: "Developer ID Application"
           DEVELOPMENT_TEAM: K7CBQW6MPG
           OTHER_CODE_SIGN_FLAGS: "--timestamp=none"
+          CODE_SIGN_ENTITLEMENTS: VimKeys/VimKeys.entitlements
     info:
       path: VimKeys/Info.plist
       properties:
         CFBundleDisplayName: VimKeys
-        CFBundleShortVersionString: "0.7.8"
-        CFBundleVersion: "20"
+        CFBundleShortVersionString: "0.7.9"
+        CFBundleVersion: "21"
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
         NSAppleEventsUsageDescription: "VimKeys uses Apple Events to read Safari's open tabs and URL, copy the current page link to the clipboard, and open URLs you type in the vomnibar (o / O / T / yy / p / P)."

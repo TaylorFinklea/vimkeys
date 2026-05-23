@@ -81,19 +81,32 @@ if [[ -z "${SKIP_CODESIGN}" ]]; then
     --deep \
     "${APP_PATH}"
 
-  # Re-sign the outer app bundle last. VimKeys is non-sandboxed and
-  # claims no entitlements (TCC — Input Monitoring, Accessibility, Apple
-  # Events, Full Disk Access — is granted at runtime, not via claims),
-  # so no entitlements file is passed.
-  echo "Re-signing main app bundle"
+  # Re-sign the outer app bundle last. VimKeys is non-sandboxed; the
+  # entitlements file only claims `automation.apple-events`, which the
+  # hardened-runtime TCC policy requires before macOS will prompt for
+  # the "control Safari" grant. (Input Monitoring, Accessibility, and
+  # Full Disk Access need no entitlement claim — those are granted at
+  # runtime via TCC's user prompts.)
+  echo "Re-signing main app bundle with Apple Events entitlement"
   /usr/bin/codesign \
     --force \
     --options runtime \
     --timestamp \
     --sign "${DEVELOPER_ID}" \
+    --entitlements "${ROOT_DIR}/VimKeys/VimKeys.entitlements" \
     "${APP_PATH}"
 
   /usr/bin/codesign --verify --deep --strict --verbose=2 "${APP_PATH}"
+
+  # Sanity check: AE entitlement landed in the signed bundle. The whole
+  # ignorelist + Esc-Esc feature breaks silently without it (no prompt,
+  # no log under our subsystem — just tccd denying AE on the side).
+  if ! /usr/bin/codesign -d --entitlements - "${APP_PATH}" 2>/dev/null \
+       | grep -q "com.apple.security.automation.apple-events"; then
+    echo "ERROR: signed bundle is missing com.apple.security.automation.apple-events" >&2
+    echo "       (URL polling + per-site ignorelist won't work)" >&2
+    exit 1
+  fi
 fi
 
 ditto -c -k --keepParent "${APP_PATH}" "${ZIP_PATH}"

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Hardened runtime + Apple Events: macOS won't even prompt for the
+	     "VimKeys would like to control Safari" Automation grant unless the
+	     binary claims this entitlement. NSAppleEventsUsageDescription in
+	     Info.plist supplies the prompt copy; this entitlement gates whether
+	     the prompt ever fires. Without it, every AE call silently fails
+	     (tccd: kTCCServiceAppleEvents requires entitlement), which in turn
+	     breaks the URL-polling that the per-site ignorelist and Esc-Esc
+	     session-suspend depend on. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

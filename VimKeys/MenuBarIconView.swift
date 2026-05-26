@@ -1,14 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// Menu-bar icon: a bold downward chevron — vim's modal-`v` shape — as the
-/// brand silhouette, with mode signalled by stroke weight, opacity, or
-/// glyph swap. Intentionally distinct from LayerKeys (rectangular keycap
-/// with shelf line) so the two apps don't look identical.
+/// Menu-bar icon: vim's command prompt (`:_`) — two stacked dots plus a
+/// cursor block — as the brand silhouette, matching the app icon. Mode is
+/// signalled by swapping the cursor shape (block for NORMAL, vertical
+/// I-beam for INSERT, mirroring vim's own modeline) and by opacity / color
+/// for off / denied / tap-error states. Intentionally distinct from
+/// LayerKeys (rectangular keycap with shelf line) so the two apps don't
+/// look identical when sitting side-by-side in the menu bar.
 ///
-/// Variants reached at V-M2: `off`, `normal`, `insert`, `denied`,
-/// `listenOnly`, `tapError`. Disabled-by-site / suspended visuals arrive
-/// in V-M5.
+/// Variants: `off`, `normal`, `insert`, `denied`, `listenOnly`, `tapError`.
 struct MenuBarIconView: View {
     enum Variant: Equatable {
         case off
@@ -104,14 +105,46 @@ struct MenuBarIconView: View {
 
     // MARK: - Drawing primitives
 
-    /// The chevron is the constant brand mark. Helper so several variants
-    /// can render it at different weights / alphas without duplicating the
-    /// path geometry.
-    private func chevronPath() -> Path {
+    /// Geometry of the brand mark (`:` + cursor block). Centered horizontally
+    /// in the 24-unit viewBox with enough negative space that the three
+    /// sub-shapes stay distinct after downscaling to 18pt menu-bar size.
+    private enum Geometry {
+        static let topDotCenter = CGPoint(x: 9, y: 8.5)
+        static let bottomDotCenter = CGPoint(x: 9, y: 14.5)
+        static let dotRadius: CGFloat = 2.1
+        static let cursorRect = CGRect(x: 13.5, y: 13.7, width: 5.0, height: 1.8)
+    }
+
+    /// Filled colon dots — the constant half of the brand mark. Variants
+    /// stroke or fill this with their own color/opacity.
+    private func colonPath() -> Path {
         Path { p in
-            p.move(to: CGPoint(x: 5, y: 6.5))
-            p.addLine(to: CGPoint(x: 12, y: 18.5))
-            p.addLine(to: CGPoint(x: 19, y: 6.5))
+            p.addEllipse(in: CGRect(
+                x: Geometry.topDotCenter.x - Geometry.dotRadius,
+                y: Geometry.topDotCenter.y - Geometry.dotRadius,
+                width: Geometry.dotRadius * 2, height: Geometry.dotRadius * 2
+            ))
+            p.addEllipse(in: CGRect(
+                x: Geometry.bottomDotCenter.x - Geometry.dotRadius,
+                y: Geometry.bottomDotCenter.y - Geometry.dotRadius,
+                width: Geometry.dotRadius * 2, height: Geometry.dotRadius * 2
+            ))
+        }
+    }
+
+    /// Horizontal cursor block — the NORMAL-mode cursor, matching the
+    /// app-icon brand mark.
+    private func cursorBlockPath() -> Path {
+        Path(roundedRect: Geometry.cursorRect, cornerRadius: 0.4)
+    }
+
+    /// Vertical I-beam line — the INSERT-mode cursor. Same vertical extent
+    /// as the colon so the icon's silhouette balance is preserved when the
+    /// dots disappear.
+    private func insertCursorPath() -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: 12, y: 6))
+            p.addLine(to: CGPoint(x: 12, y: 18))
         }
     }
 
@@ -120,68 +153,50 @@ struct MenuBarIconView: View {
 
         switch variant {
         case .off:
-            // Faded chevron — Safari isn't frontmost. Alpha survives
-            // template tinting (only the color channel is replaced),
-            // so this reads as a quieter version of the same brand mark.
-            ctx.stroke(
-                chevronPath(),
-                with: .color(base.opacity(0.45)),
-                style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round)
-            )
+            // Full brand mark at reduced opacity — Safari isn't frontmost.
+            // Alpha survives template tinting (only the color channel gets
+            // replaced), so this reads as a quieter version of NORMAL.
+            ctx.fill(colonPath(), with: .color(base.opacity(0.45)))
+            ctx.fill(cursorBlockPath(), with: .color(base.opacity(0.45)))
 
         case .normal:
-            // Bold chevron — VimKeys is alive and listening.
-            ctx.stroke(
-                chevronPath(),
-                with: .color(base),
-                style: StrokeStyle(lineWidth: 3.8, lineCap: .round, lineJoin: .round)
-            )
+            // Full brand mark — VimKeys is alive and listening. Mirrors the
+            // app icon: filled colon + horizontal cursor block.
+            ctx.fill(colonPath(), with: .color(base))
+            ctx.fill(cursorBlockPath(), with: .color(base))
 
         case .insert:
-            // I-beam glyph — universal "text cursor" symbol. VimKeys has
-            // stepped aside so the user can type. Brand chevron is
-            // intentionally absent in this mode: the silhouette itself
-            // communicates "you're typing", same way vim's mode-line
-            // signals INSERT by replacing the cursor shape.
-            let stem = Path { p in
-                p.move(to: CGPoint(x: 12, y: 5.5))
-                p.addLine(to: CGPoint(x: 12, y: 19.5))
-            }
-            ctx.stroke(stem, with: .color(base), style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
-            let serifs = Path { p in
-                p.move(to: CGPoint(x: 8.5, y: 5.5)); p.addLine(to: CGPoint(x: 15.5, y: 5.5))
-                p.move(to: CGPoint(x: 8.5, y: 19.5)); p.addLine(to: CGPoint(x: 15.5, y: 19.5))
-            }
-            ctx.stroke(serifs, with: .color(base), style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
+            // Vertical I-beam — vim has stepped aside so the user can type.
+            // Colon and block cursor disappear; the thin vertical line is
+            // the universal text-input cursor, the same shape vim itself
+            // uses to signal INSERT in its modeline.
+            ctx.stroke(
+                insertCursorPath(),
+                with: .color(base),
+                style: StrokeStyle(lineWidth: 2.4, lineCap: .round)
+            )
 
         case .denied:
-            // Chevron + diagonal slash — denied. Orange (non-template) so
-            // the warning color survives.
-            ctx.stroke(
-                chevronPath(),
-                with: .color(base),
-                style: StrokeStyle(lineWidth: 3.2, lineCap: .round, lineJoin: .round)
-            )
+            // Brand mark + diagonal slash — input monitoring denied. Orange
+            // (non-template) so the warning color survives the render.
+            ctx.fill(colonPath(), with: .color(base))
+            ctx.fill(cursorBlockPath(), with: .color(base))
             let slash = Path { p in
                 p.move(to: CGPoint(x: 4.5, y: 4.5))
                 p.addLine(to: CGPoint(x: 19.5, y: 19.5))
             }
-            ctx.stroke(slash, with: .color(base), style: StrokeStyle(lineWidth: 3.0, lineCap: .round))
+            ctx.stroke(slash, with: .color(base), style: StrokeStyle(lineWidth: 2.6, lineCap: .round))
 
         case .listenOnly:
-            // Chevron rendered as three dash segments per leg — visually
-            // "partial / passive listening". Same brand silhouette but
-            // interrupted strokes signal degraded function.
-            let stroke = StrokeStyle(lineWidth: 2.4, lineCap: .round)
-            let segments = Path { p in
-                // Left leg: (5,6.5) → (12,18.5)
-                p.move(to: CGPoint(x: 5.7, y: 7.7)); p.addLine(to: CGPoint(x: 7.3, y: 10.4))
-                p.move(to: CGPoint(x: 8.6, y: 12.6)); p.addLine(to: CGPoint(x: 10.2, y: 15.3))
-                // Right leg: (12,18.5) → (19,6.5)
-                p.move(to: CGPoint(x: 13.8, y: 15.3)); p.addLine(to: CGPoint(x: 15.4, y: 12.6))
-                p.move(to: CGPoint(x: 16.7, y: 10.4)); p.addLine(to: CGPoint(x: 18.3, y: 7.7))
-            }
-            ctx.stroke(segments, with: .color(base), style: stroke)
+            // Hollow colon (rings) + filled cursor block — partial function.
+            // The unfilled dots read as "the prompt is there but quieter",
+            // while the cursor stays solid because input is still flowing.
+            ctx.stroke(
+                colonPath(),
+                with: .color(base),
+                style: StrokeStyle(lineWidth: 1.0)
+            )
+            ctx.fill(cursorBlockPath(), with: .color(base))
 
         case .tapError:
             // ✕ centered — event tap died. Red (non-template).

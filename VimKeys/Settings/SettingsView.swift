@@ -265,8 +265,8 @@ struct SettingsView: View {
 }
 
 /// Sites tab. Editable list of disabled hosts plus a one-click "disable
-/// current site" button (uses `AppModel.disableCurrentHost()` which reads
-/// the polled Safari URL).
+/// current site" button (uses `AppModel.disableCurrentHost()`, which
+/// live-queries Safari's frontmost URL via Apple Events).
 private struct SitesView: View {
     @ObservedObject var model: AppModel
     @State private var newEntry: String = ""
@@ -277,7 +277,7 @@ private struct SitesView: View {
             Text("Sites")
                 .font(.title2.weight(.semibold))
 
-            Text("VimKeys passes every keystroke straight through to Safari when the page's host matches one of these entries. Suffix-matched, case-insensitive (\u{0060}gmail.com\u{0060} also covers \u{0060}mail.gmail.com\u{0060}).")
+            Text("VimKeys passes every keystroke straight through to Safari on these sites. Enter a domain (\u{0060}gmail.com\u{0060} also covers \u{0060}mail.gmail.com\u{0060}) or a \u{0060}host:port\u{0060} (\u{0060}localhost:5174\u{0060}) to scope a single dev server. You can paste a full URL \u{2014} it\u{2019}s reduced to the host automatically. Case-insensitive; path is ignored.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 

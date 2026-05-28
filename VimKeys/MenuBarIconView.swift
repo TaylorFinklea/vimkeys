@@ -105,14 +105,17 @@ struct MenuBarIconView: View {
 
     // MARK: - Drawing primitives
 
-    /// Geometry of the brand mark (`:` + cursor block). Centered horizontally
-    /// in the 24-unit viewBox with enough negative space that the three
-    /// sub-shapes stay distinct after downscaling to 18pt menu-bar size.
+    /// Geometry of the brand mark (`:` + cursor block) in the 24-unit
+    /// viewBox. Sized to fill ~63% of the box (extent ≈ x 5..20.5,
+    /// y 4..19) so it reads at the same visual weight as neighbouring
+    /// menu-bar icons; an earlier, smaller layout looked undersized next
+    /// to system glyphs. The sub-shapes stay far enough apart to remain
+    /// distinct after downscaling to 18pt.
     private enum Geometry {
-        static let topDotCenter = CGPoint(x: 9, y: 8.5)
-        static let bottomDotCenter = CGPoint(x: 9, y: 14.5)
-        static let dotRadius: CGFloat = 2.1
-        static let cursorRect = CGRect(x: 13.5, y: 13.7, width: 5.0, height: 1.8)
+        static let topDotCenter = CGPoint(x: 8.0, y: 7.0)
+        static let bottomDotCenter = CGPoint(x: 8.0, y: 16.0)
+        static let dotRadius: CGFloat = 3.0
+        static let cursorRect = CGRect(x: 13.5, y: 15.7, width: 7.0, height: 2.8)
     }
 
     /// Filled colon dots — the constant half of the brand mark. Variants
@@ -143,8 +146,8 @@ struct MenuBarIconView: View {
     /// dots disappear.
     private func insertCursorPath() -> Path {
         Path { p in
-            p.move(to: CGPoint(x: 12, y: 6))
-            p.addLine(to: CGPoint(x: 12, y: 18))
+            p.move(to: CGPoint(x: 12, y: 4.5))
+            p.addLine(to: CGPoint(x: 12, y: 19.5))
         }
     }
 

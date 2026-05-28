@@ -478,9 +478,12 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func addDisabledHost(_ host: String) {
-        let normalized = host.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !normalized.isEmpty, !settings.disabledHosts.contains(normalized) else { return }
+    /// Adds a disable rule. `raw` may be a bare host, a `host:port`, or a
+    /// full pasted URL — `SitesStore.normalizeEntry` reduces it to the
+    /// matchable authority before storing.
+    func addDisabledHost(_ raw: String) {
+        guard let normalized = SitesStore.normalizeEntry(raw),
+              !settings.disabledHosts.contains(normalized) else { return }
         settings.disabledHosts.append(normalized)
         settingsStore.save(settings)
         eventTapService.updateSettings(settings)
@@ -493,9 +496,21 @@ final class AppModel: ObservableObject {
         eventTapService.updateSettings(settings)
     }
 
+    /// "Disable current site" button. Queries Safari's frontmost URL
+    /// *live* via Apple Events rather than reading `lastReportedURL` —
+    /// that polled value is cleared whenever Safari loses frontmost, and
+    /// Safari is never frontmost while this button's Settings window is
+    /// open. AppleScript reads Safari's front window regardless of which
+    /// app macOS considers focused. The full URL is handed to
+    /// `addDisabledHost`, which extracts `host:port`.
     func disableCurrentHost() {
-        guard let host = lastReportedURL?.host else { return }
-        addDisabledHost(host)
+        guard let url = safariBridge.currentURL() else {
+            if !safariBridge.hasAccess {
+                lastError = "Grant Apple Events access (Privacy & Security \u{2192} Automation \u{2192} Safari)."
+            }
+            return
+        }
+        addDisabledHost(url.absoluteString)
     }
 
     func safariFocusEditableChanged(_ isEditable: Bool) {

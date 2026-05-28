@@ -42,6 +42,48 @@ final class SitesStoreTests: XCTestCase {
         let url = URL(string: "https://notgmail.com/")!
         XCTAssertFalse(SitesStore.isDisabled(url: url, in: ["gmail.com"]))
     }
+
+    // MARK: - Entry normalization (pasted URLs → host[:port])
+
+    func testNormalizeStripsSchemeAndPath() {
+        XCTAssertEqual(SitesStore.normalizeEntry("http://localhost:5174/v4"), "localhost:5174")
+        XCTAssertEqual(SitesStore.normalizeEntry("https://www.example.com/foo?x=1"), "example.com")
+        XCTAssertEqual(SitesStore.normalizeEntry("  GMAIL.com  "), "gmail.com")
+    }
+
+    func testNormalizeBareInputUnchanged() {
+        XCTAssertEqual(SitesStore.normalizeEntry("gmail.com"), "gmail.com")
+        XCTAssertEqual(SitesStore.normalizeEntry("localhost:5174"), "localhost:5174")
+    }
+
+    func testNormalizeRejectsEmptyOrHostless() {
+        XCTAssertNil(SitesStore.normalizeEntry(""))
+        XCTAssertNil(SitesStore.normalizeEntry("   "))
+        XCTAssertNil(SitesStore.normalizeEntry("https://"))
+    }
+
+    // MARK: - Matching against pasted-URL and host:port entries (bug #1)
+
+    func testMatchesPastedFullURLEntry() {
+        // The exact reported bug: entry was pasted as a full URL.
+        let url = URL(string: "http://localhost:5174/v4")!
+        XCTAssertTrue(SitesStore.isDisabled(url: url, in: ["http://localhost:5174/v4"]))
+        XCTAssertTrue(SitesStore.isDisabled(url: url, in: ["localhost:5174"]))
+    }
+
+    func testHostPortEntryIsPortSpecific() {
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "http://localhost:5174/")!, in: ["localhost:5174"]))
+        XCTAssertFalse(SitesStore.isDisabled(
+            url: URL(string: "http://localhost:3000/")!, in: ["localhost:5174"]))
+    }
+
+    func testBareHostEntryMatchesAllPorts() {
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "http://localhost:5174/")!, in: ["localhost"]))
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "http://localhost:3000/")!, in: ["localhost"]))
+    }
 }
 
 final class VimStateMachineSitesTests: XCTestCase {

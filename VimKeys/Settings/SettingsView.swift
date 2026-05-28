@@ -37,15 +37,16 @@ struct SettingsView: View {
     private var permissionsView: some View {
         let inputGranted = model.permissionState != .denied
         let accessibilityGranted = model.accessibilityGranted
+        let fullDiskGranted = model.fullDiskAccessGranted
 
         return VStack(alignment: .leading, spacing: 16) {
             Text("Permissions")
                 .font(.title2.weight(.semibold))
 
-            Text("VimKeys needs Input Monitoring to read vim-style keys while Safari is frontmost. Accessibility is required to post scroll events, switch into insert mode on text inputs, and read link targets for hint mode (V-M3).")
+            Text("VimKeys needs Input Monitoring to read vim-style keys while Safari is frontmost. Accessibility is required to post scroll events, switch into insert mode on text inputs, and read link targets for hint mode. Full Disk Access is optional \u{2014} it lets VimKeys read Safari\u{2019}s bookmarks directly.")
                 .foregroundStyle(.secondary)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 permissionRow(
                     title: "Input Monitoring",
                     granted: inputGranted,
@@ -56,6 +57,15 @@ struct SettingsView: View {
                     title: "Accessibility",
                     granted: accessibilityGranted,
                     action: { model.requestAccessibility() }
+                )
+
+                permissionRow(
+                    title: "Full Disk Access",
+                    granted: fullDiskGranted,
+                    optional: true,
+                    detail: "Optional. Lets the bookmarks vomnibar (\u{0060}b\u{0060} / \u{0060}B\u{0060}) read Safari\u{2019}s bookmarks live. Without it, export bookmarks from Safari manually. Relaunch VimKeys after granting.",
+                    buttonLabel: "Open Full Disk Access\u{2026}",
+                    action: { model.openFullDiskAccessSettings() }
                 )
             }
 
@@ -76,27 +86,43 @@ struct SettingsView: View {
 
             Spacer()
         }
+        // Re-probe FDA each time the tab is shown so a grant made in
+        // System Settings is reflected without waiting for a relaunch.
+        .onAppear { model.refreshPermissionState() }
     }
 
     @ViewBuilder
     private func permissionRow(
         title: String,
         granted: Bool,
+        optional: Bool = false,
+        detail: String? = nil,
+        buttonLabel: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 12) {
-            Label(
-                title,
-                systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
-            )
-            .foregroundStyle(granted ? .green : .orange)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 12) {
+                Label(
+                    title,
+                    systemImage: granted
+                        ? "checkmark.circle.fill"
+                        : (optional ? "minus.circle" : "exclamationmark.triangle.fill")
+                )
+                .foregroundStyle(granted ? .green : (optional ? .secondary : .orange))
 
-            Spacer()
+                Spacer()
 
-            if !granted {
-                Button("Enable \(title)") {
-                    action()
+                if !granted {
+                    Button(buttonLabel ?? "Enable \(title)") {
+                        action()
+                    }
                 }
+            }
+
+            if let detail {
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }

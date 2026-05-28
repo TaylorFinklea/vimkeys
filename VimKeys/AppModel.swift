@@ -7,6 +7,10 @@ final class AppModel: ObservableObject {
     @Published var mode: VimMode = .disabled
     @Published var permissionState: PermissionState
     @Published var accessibilityGranted: Bool
+    /// Full Disk Access has no query API; this is probed by attempting the
+    /// Safari `Bookmarks.plist` read VimKeys uses FDA for. Optional — the
+    /// bookmarks vomnibar falls back to the HTML export without it.
+    @Published private(set) var fullDiskAccessGranted: Bool
     @Published var settings: VimSettings
     @Published var lastError: String?
     @Published private(set) var launchAtLoginEnabled: Bool
@@ -76,6 +80,7 @@ final class AppModel: ObservableObject {
         self.settings = loadedSettings
         permissionState = PermissionController.currentState()
         accessibilityGranted = PermissionController.hasPostEventAccess
+        fullDiskAccessGranted = Self.probeFullDiskAccess()
 
         let service = eventTapService ?? EventTapService(settings: loadedSettings)
         self.eventTapService = service
@@ -410,6 +415,7 @@ final class AppModel: ObservableObject {
     func refreshPermissionState() {
         permissionState = PermissionController.currentState()
         accessibilityGranted = PermissionController.hasPostEventAccess
+        fullDiskAccessGranted = Self.probeFullDiskAccess()
         // AX trust may have flipped since the last workspace notification —
         // poke SafariObserver so the AX focus observer reconciles. Without
         // this, granting Accessibility while Safari is already frontmost
@@ -511,6 +517,31 @@ final class AppModel: ObservableObject {
             return
         }
         addDisabledHost(url.absoluteString)
+    }
+
+    /// Full Disk Access has no TCC query API, so infer it from the one
+    /// thing VimKeys needs it for: reading Safari's `Bookmarks.plist`. A
+    /// `.permissionDenied` means FDA is off; success or any other error
+    /// (e.g. the file simply not existing) means the read wasn't blocked
+    /// by TCC. Reuses the real bookmark reader so the probe can't drift
+    /// from the actual access path.
+    private static func probeFullDiskAccess() -> Bool {
+        if case .failure(.permissionDenied) =
+            SafariBookmarks.readPlist(at: BookmarksStore.defaultPlistPath) {
+            return false
+        }
+        return true
+    }
+
+    /// Deep-links to System Settings → Privacy & Security → Full Disk
+    /// Access. Unlike Input Monitoring / Accessibility there's no API to
+    /// trigger a TCC prompt for FDA — the user adds VimKeys manually — so
+    /// this only opens the pane. After granting, VimKeys must be relaunched
+    /// for the read to take effect. Re-probes immediately in case access
+    /// was already in place.
+    func openFullDiskAccessSettings() {
+        openSettings(url: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+        fullDiskAccessGranted = Self.probeFullDiskAccess()
     }
 
     func safariFocusEditableChanged(_ isEditable: Bool) {

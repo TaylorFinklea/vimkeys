@@ -210,6 +210,34 @@ final class VimStateMachineSitesTests: XCTestCase {
         XCTAssertEqual(machine.mode, .normal(prefix: .none))
     }
 
+    func testBackgroundingSafariDismissesOpenVomnibar() {
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
+        machine.updateSafariFrontmost(true)
+        let open = machine.decide(eventType: .keyDown, keyCode: 0, characters: "T",
+                                  flags: [], timestamp: 0)
+        XCTAssertEqual(open.intent, .requestVomnibar(.tabs))
+        XCTAssertEqual(machine.mode, .vomnibar(VomnibarState(flavor: .tabs)))
+
+        // Safari goes background while the vomnibar is open: the overlay
+        // must be dismissed, not orphaned (the tap stops intercepting, so
+        // the user could never Esc it away otherwise).
+        let bg = machine.updateSafariFrontmost(false)
+        XCTAssertEqual(bg?.intent, .dismissOverlay)
+        XCTAssertEqual(machine.mode, .disabled)
+    }
+
+    func testBackgroundingSafariInNormalModeJustDisables() {
+        var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
+        machine.updateSafariFrontmost(true)
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+
+        // No overlay open — backgrounding is a plain pass-through disable,
+        // not a dismiss.
+        let bg = machine.updateSafariFrontmost(false)
+        XCTAssertEqual(bg?.intent, .passThrough)
+        XCTAssertEqual(machine.mode, .disabled)
+    }
+
     func testReToggleSuspendOnSameURLUnsuspends() {
         var machine = VimStateMachine(settings: VimSettings(insertModeBehavior: .autoDetect))
         machine.updateSafariFrontmost(true)

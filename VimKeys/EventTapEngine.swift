@@ -213,9 +213,16 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         let mode = stateMachine.mode
         stateMachineLock.unlock()
 
-        if decision != nil {
+        if let decision {
             onModeChange(mode)
             cancelPrefixTimeout()
+            // Backgrounding out of an overlay mode asks us to dismiss it
+            // (otherwise the panel is orphaned — see updateSafariFrontmost).
+            // Unlike the keystroke path, this entry point doesn't run
+            // through `apply(intent:)`, so dispatch the dismiss directly.
+            if decision.intent == .dismissOverlay {
+                onDismissOverlay()
+            }
         }
     }
 

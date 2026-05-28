@@ -210,7 +210,17 @@ struct VimStateMachine {
             return setMode(defaultMode, intent: .passThrough)
         } else {
             guard !isModeOff else { return nil }
-            return setMode(.disabled, intent: .passThrough)
+            // If an overlay (vomnibar / hint / help) is open when Safari
+            // goes background, tear it down. The event tap only intercepts
+            // while Safari is frontmost, so once it isn't, the user can
+            // never press Esc to reach the coordinator — the floating panel
+            // would be orphaned on screen (it also ignores mouse clicks).
+            let dismissing: Bool
+            switch mode {
+            case .vomnibar, .hint, .help: dismissing = true
+            default:                       dismissing = false
+            }
+            return setMode(.disabled, intent: dismissing ? .dismissOverlay : .passThrough)
         }
     }
 

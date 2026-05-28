@@ -1,9 +1,13 @@
 name: release
 
+# Manual-only. Releases are built, signed, notarized, and published
+# locally (see scripts/package_release.sh + the appcast/gh-release recipe
+# in the project notes) because the signing/notary/Sparkle secrets are
+# not configured in GitHub. The old `push: tags` trigger fired this on
+# every version tag and always failed at the cert-import step, producing
+# false-failure noise. Kept as workflow_dispatch so the build/sign logic
+# stays documented and runnable if those secrets are ever added.
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 jobs:

@@ -84,6 +84,53 @@ final class SitesStoreTests: XCTestCase {
         XCTAssertTrue(SitesStore.isDisabled(
             url: URL(string: "http://localhost:3000/")!, in: ["localhost"]))
     }
+
+    // MARK: - IPv6 literal hosts (F11)
+
+    func testNormalizeIPv6WithPortBrackets() {
+        XCTAssertEqual(SitesStore.normalizeEntry("http://[::1]:5174/v4"), "[::1]:5174")
+        XCTAssertEqual(SitesStore.normalizeEntry("[::1]:5174"), "[::1]:5174")
+    }
+
+    func testIPv6HostPortMatchesAndIsPortSpecific() {
+        let url = URL(string: "http://[::1]:5174/v4")!
+        XCTAssertTrue(SitesStore.isDisabled(url: url, in: ["http://[::1]:5174/v4"]))
+        XCTAssertTrue(SitesStore.isDisabled(url: url, in: ["[::1]:5174"]))
+        XCTAssertFalse(SitesStore.isDisabled(
+            url: URL(string: "http://[::1]:3000/")!, in: ["[::1]:5174"]))
+    }
+
+    func testBareIPv6EntryMatchesAllPorts() {
+        XCTAssertEqual(SitesStore.normalizeEntry("[2001:db8::1]"), "[2001:db8::1]")
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "http://[2001:db8::1]/x")!, in: ["[2001:db8::1]"]))
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "http://[2001:db8::1]:8080/")!, in: ["[2001:db8::1]"]))
+    }
+
+    // MARK: - Internationalized domains (F12)
+
+    func testNormalizeIDNToPunycode() {
+        XCTAssertEqual(SitesStore.normalizeEntry("bücher.de"), "xn--bcher-kva.de")
+    }
+
+    func testIDNEntryMatchesPunycodeURL() {
+        let url = URL(string: "https://xn--bcher-kva.de/x")!
+        XCTAssertTrue(SitesStore.isDisabled(url: url, in: ["bücher.de"]))
+        XCTAssertTrue(SitesStore.isDisabled(url: url, in: ["xn--bcher-kva.de"]))
+    }
+
+    // MARK: - Trailing-dot FQDN (F13)
+
+    func testTrailingDotHostMatches() {
+        // Runtime host carries the trailing dot.
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "https://gmail.com./inbox")!, in: ["gmail.com"]))
+        // Entry carries the trailing dot.
+        XCTAssertTrue(SitesStore.isDisabled(
+            url: URL(string: "https://gmail.com/")!, in: ["gmail.com."]))
+        XCTAssertEqual(SitesStore.normalizeEntry("gmail.com."), "gmail.com")
+    }
 }
 
 final class VimStateMachineSitesTests: XCTestCase {

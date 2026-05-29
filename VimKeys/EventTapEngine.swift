@@ -42,6 +42,11 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
 
     private let timerQueue = DispatchQueue(label: "io.taylorfinklea.vimkeys.prefixTimer")
     private var pendingTimeoutTimer: DispatchSourceTimer?
+    /// Monotonic token bumped on every keystroke (engine-thread-confined).
+    /// A prefix-timeout fire only resets the prefix if its captured
+    /// generation still matches — otherwise a later keystroke has already
+    /// advanced the state and the timeout is stale (see `commandTimeoutOnThread`).
+    private var prefixTimeoutGeneration: UInt64 = 0
 
     init(
         settings: VimSettings,
@@ -351,12 +356,25 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             forKeyCode: keyCode,
             flags: event.flags
         )
+        // Caps Lock (`.maskAlphaShift`) would uppercase the dispatch
+        // character and misfire the case-sensitive normal-mode binding
+        // table (`g`→`G`, `j`→`J`-and-unbound, …). Resolve a separate
+        // Caps-Lock-free character for command lookup; the raw `characters`
+        // still drives hint/vomnibar text entry. Only re-translate when
+        // Caps Lock is actually engaged — the common path stays single-pass.
+        let commandCharacters = event.flags.contains(.maskAlphaShift)
+            ? KeyboardLayoutCache.shared.characters(
+                forKeyCode: keyCode,
+                flags: event.flags.subtracting(.maskAlphaShift)
+              )
+            : characters
 
         stateMachineLock.lock()
         let decision = stateMachine.decide(
             eventType: type,
             keyCode: keyCode,
             characters: characters,
+            commandCharacters: commandCharacters,
             flags: event.flags,
             timestamp: event.timestamp
         )
@@ -530,14 +548,20 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             needsTimeout = false
         }
 
+        // Every keystroke advances the generation so any already-armed
+        // (or already-fired-but-not-yet-delivered) prefix timeout is
+        // recognized as stale before it can wipe a freshly-typed prefix.
+        prefixTimeoutGeneration &+= 1
+        let generation = prefixTimeoutGeneration
+
         if needsTimeout {
-            schedulePrefixTimeout()
+            schedulePrefixTimeout(generation: generation)
         } else {
             cancelPrefixTimeout()
         }
     }
 
-    private func schedulePrefixTimeout() {
+    private func schedulePrefixTimeout(generation: UInt64) {
         timerQueue.async { [weak self] in
             guard let self else { return }
             self.pendingTimeoutTimer?.cancel()
@@ -548,7 +572,7 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
             )
             timer.setEventHandler { [weak self] in
                 guard let self else { return }
-                self.handlePrefixTimeoutFired()
+                self.handlePrefixTimeoutFired(generation: generation)
             }
             self.pendingTimeoutTimer = timer
             timer.resume()
@@ -562,14 +586,23 @@ final class EventTapEngine: NSObject, @unchecked Sendable {
         }
     }
 
-    private func handlePrefixTimeoutFired() {
+    private func handlePrefixTimeoutFired(generation: UInt64) {
         pendingTimeoutTimer = nil
         guard let thread else { return }
-        perform(#selector(commandTimeoutOnThread), on: thread, with: nil, waitUntilDone: false)
+        // Cancelling the DispatchSourceTimer can't un-enqueue a fire that
+        // already hopped to `timerQueue`; the generation check on the
+        // engine thread is what actually discards a stale timeout.
+        perform(#selector(commandTimeoutOnThread(_:)), on: thread,
+                with: NSNumber(value: generation), waitUntilDone: false)
     }
 
     @objc
-    private func commandTimeoutOnThread() {
+    private func commandTimeoutOnThread(_ generationBox: NSNumber) {
+        // Stale fire: a keystroke advanced the generation after this timer
+        // was armed, so the prefix it meant to clear is gone or has been
+        // superseded by a newer one we must not wipe.
+        guard generationBox.uint64Value == prefixTimeoutGeneration else { return }
+
         stateMachineLock.lock()
         let decision = stateMachine.commandTimeout()
         let mode = stateMachine.mode

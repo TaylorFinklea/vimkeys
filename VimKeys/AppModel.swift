@@ -2,6 +2,18 @@ import AppKit
 import Combine
 import Foundation
 
+/// Marshal an engine-thread callback onto the main actor while preserving
+/// FIFO order. Independently-created `Task { @MainActor in }` instances are
+/// serialized on the main actor but NOT guaranteed to run in *creation*
+/// order, so a burst of per-keystroke callbacks (e.g. the two characters of
+/// a hint label "sa") could be reordered and corrupt the typed buffer.
+/// `DispatchQueue.main` is strictly FIFO for asyncs from a single source
+/// thread; `assumeIsolated` bridges synchronously to the main actor — the
+/// main queue *is* the main actor's executor, so the assertion always holds.
+private func hopToMain(_ body: @escaping @MainActor @Sendable () -> Void) {
+    DispatchQueue.main.async { MainActor.assumeIsolated(body) }
+}
+
 @MainActor
 final class AppModel: ObservableObject {
     @Published var mode: VimMode = .disabled
@@ -11,6 +23,13 @@ final class AppModel: ObservableObject {
     /// Safari `Bookmarks.plist` read VimKeys uses FDA for. Optional — the
     /// bookmarks vomnibar falls back to the HTML export without it.
     @Published private(set) var fullDiskAccessGranted: Bool
+    /// Apple-Events ("control Safari") TCC grant. Drives the per-site
+    /// ignorelist + Esc-Esc poll, `yy` copy, `o`/`O`/`p`/`P` open, and the
+    /// `T` tab switcher. Optional in the same sense as FDA — VimKeys still
+    /// scrolls / hints without it — but the ignorelist and URL-aware
+    /// features stay dark until it's granted, so the Permissions tab
+    /// surfaces it with a one-tap request button.
+    @Published private(set) var automationAccessGranted: Bool
     @Published var settings: VimSettings
     @Published var lastError: String?
     @Published private(set) var launchAtLoginEnabled: Bool
@@ -81,6 +100,7 @@ final class AppModel: ObservableObject {
         permissionState = PermissionController.currentState()
         accessibilityGranted = PermissionController.hasPostEventAccess
         fullDiskAccessGranted = Self.probeFullDiskAccess()
+        automationAccessGranted = PermissionController.hasAppleEventsAccess
 
         let service = eventTapService ?? EventTapService(settings: loadedSettings)
         self.eventTapService = service
@@ -124,36 +144,33 @@ final class AppModel: ObservableObject {
             self?.safariFocusEditableChanged(isEditable)
         }
 
+        // All engine-thread callbacks below hop to the main actor through
+        // `hopToMain` (FIFO) rather than independent `Task`s, so a burst of
+        // per-keystroke callbacks can't be reordered on arrival.
         service.onModeChange = { [weak self] mode in
-            Task { @MainActor in
-                self?.mode = mode
-            }
+            hopToMain { self?.mode = mode }
         }
         service.onTapError = { [weak self] message in
-            Task { @MainActor in
+            hopToMain {
                 self?.lastError = message
                 self?.tapErrorActive = true
             }
         }
         service.onTapRecovered = { [weak self] in
-            Task { @MainActor in
-                self?.tapErrorActive = false
-            }
+            hopToMain { self?.tapErrorActive = false }
         }
         service.onShowHelp = { [weak self] in
-            Task { @MainActor in
-                self?.overlayManager.showHelp()
-            }
+            hopToMain { self?.overlayManager.showHelp() }
         }
         service.onDismissOverlay = { [weak self] in
-            Task { @MainActor in
+            hopToMain {
                 self?.overlayManager.dismiss()
                 self?.linkHintCoordinator.cancel()
                 self?.vomnibarCoordinator.cancel()
             }
         }
         service.onRequestHints = { [weak self] openInNewTab, copyOnly, filter in
-            Task { @MainActor in
+            hopToMain {
                 guard let self else { return }
                 self.linkHintCoordinator.start(
                     openInNewTab: openInNewTab,
@@ -164,29 +181,19 @@ final class AppModel: ObservableObject {
             }
         }
         service.onForwardHintKey = { [weak self] chars in
-            Task { @MainActor in
-                self?.linkHintCoordinator.handleKey(chars: chars)
-            }
+            hopToMain { self?.linkHintCoordinator.handleKey(chars: chars) }
         }
         service.onRequestVomnibar = { [weak self] flavor in
-            Task { @MainActor in
-                self?.vomnibarCoordinator.start(flavor: flavor)
-            }
+            hopToMain { self?.vomnibarCoordinator.start(flavor: flavor) }
         }
         service.onForwardVomnibarKey = { [weak self] chars in
-            Task { @MainActor in
-                self?.vomnibarCoordinator.handleKey(chars: chars)
-            }
+            hopToMain { self?.vomnibarCoordinator.handleKey(chars: chars) }
         }
         service.onCopyCurrentURL = { [weak self] in
-            Task { @MainActor in
-                self?.copyCurrentSafariURL()
-            }
+            hopToMain { self?.copyCurrentSafariURL() }
         }
         service.onOpenClipboardURL = { [weak self] inNewTab in
-            Task { @MainActor in
-                self?.openClipboardURL(inNewTab: inNewTab)
-            }
+            hopToMain { self?.openClipboardURL(inNewTab: inNewTab) }
         }
         service.onToggleSuspended = { [weak service] in
             // Esc-Esc chord. State machine already detected the chord
@@ -196,17 +203,19 @@ final class AppModel: ObservableObject {
             service?.toggleSuspendOnCurrentURL()
         }
         service.onTabGroupNavigation = { [weak self] forward in
-            Task { @MainActor in
-                self?.navigateTabGroup(forward: forward)
-            }
+            hopToMain { self?.navigateTabGroup(forward: forward) }
         }
 
-        // Vomnibar error sink (deferred from above): bookmarks reads
-        // surface FDA-denied messages here so the user has a breadcrumb.
+        // Coordinator error sinks (deferred to here, where all stored
+        // properties are initialized so `self` is capturable): the vomnibar
+        // surfaces FDA-denied bookmark reads, the hint coordinator surfaces
+        // the Accessibility-trust-missing case, so f/F doing nothing isn't
+        // mistaken for an empty page.
         vomnibar.onError = { [weak self] message in
-            Task { @MainActor in
-                self?.lastError = message
-            }
+            hopToMain { self?.lastError = message }
+        }
+        hintCoordinator.onError = { [weak self] message in
+            hopToMain { self?.lastError = message }
         }
 
         if permissionState.isGranted {
@@ -227,8 +236,16 @@ final class AppModel: ObservableObject {
 
         safariObserver.start()
         // Seed the engine with the current frontmost state — SafariObserver
-        // emits only on transitions, so the very first one is silent.
-        service.updateSafariFrontmost(SafariObserver.isSafariFrontmost())
+        // emits only on transitions, so the very first one is silent. Start
+        // the URL poll here too if Safari is already frontmost at launch:
+        // otherwise the poll only ever starts on a later frontmost
+        // transition, leaving `currentURL` nil (and the per-site ignorelist
+        // + Esc-Esc dead) for a Safari window that was already frontmost.
+        let safariFrontmostAtLaunch = SafariObserver.isSafariFrontmost()
+        service.updateSafariFrontmost(safariFrontmostAtLaunch)
+        if safariFrontmostAtLaunch {
+            startURLPoll()
+        }
 
         if !didShowLaunchAtLoginPrompt && !Self.isRunningUnderXCTest {
             Task { @MainActor [weak self] in
@@ -416,6 +433,7 @@ final class AppModel: ObservableObject {
         permissionState = PermissionController.currentState()
         accessibilityGranted = PermissionController.hasPostEventAccess
         fullDiskAccessGranted = Self.probeFullDiskAccess()
+        automationAccessGranted = PermissionController.hasAppleEventsAccess
         // AX trust may have flipped since the last workspace notification —
         // poke SafariObserver so the AX focus observer reconciles. Without
         // this, granting Accessibility while Safari is already frontmost
@@ -456,9 +474,11 @@ final class AppModel: ObservableObject {
     /// poll matches Vimium's "couple-second" latency expectations.
     private func startURLPoll() {
         stopURLPoll()
-        guard safariBridge.hasAccess else { return }
         // Fire once immediately so the disabled-by-site state is current
-        // before the user has a chance to press a key.
+        // before the user has a chance to press a key. The timer keeps
+        // running even before Automation is granted; each tick re-checks
+        // permission (without prompting) and starts feeding URLs the moment
+        // the user grants access via a gesture or the Permissions button.
         pollSafariURL()
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + Self.urlPollInterval, repeating: Self.urlPollInterval)
@@ -473,11 +493,29 @@ final class AppModel: ObservableObject {
         urlPollTimer?.cancel()
         urlPollTimer = nil
         lastReportedURL = nil
-        eventTapService.updateCurrentURL(nil)
+        // Deliberately do NOT push `updateCurrentURL(nil)` here. Nulling the
+        // URL on every Cmd-Tab away cleared the disabled-by-site state, so
+        // returning to a disabled site flashed VimKeys back on (live) until
+        // the next poll round-tripped — and if that first poll hit a
+        // transient nil, it stayed on. Retaining the last URL lets
+        // `updateSafariFrontmost(true)` re-enter `.disabledBySite`
+        // immediately on return; the resumed poll then re-confirms. (A
+        // windowless-but-frontmost Safari just retains the stale URL until
+        // the next navigation — preferable to flapping the site enabled.)
     }
 
     private func pollSafariURL() {
-        let url = safariBridge.currentURL()
+        // Check permission WITHOUT prompting. The background poll must never
+        // raise the Automation consent dialog (it would pop unbidden while
+        // the user is mid-task in Safari); the grant comes from an explicit
+        // gesture (o / O / T / yy) or the Permissions button instead.
+        guard safariBridge.hasAccess else { return }
+        // A nil here means a transient AppleScript failure (or no windows,
+        // which the frontmost transition already handles). Do NOT forward
+        // it: pushing `updateCurrentURL(nil)` would reconcile a genuinely
+        // disabled site back to enabled until the next good poll. Preserve
+        // the last known URL and wait for a real one.
+        guard let url = safariBridge.currentURL() else { return }
         if url != lastReportedURL {
             lastReportedURL = url
             eventTapService.updateCurrentURL(url)
@@ -523,11 +561,13 @@ final class AppModel: ObservableObject {
     /// thing VimKeys needs it for: reading Safari's `Bookmarks.plist`. A
     /// `.permissionDenied` means FDA is off; success or any other error
     /// (e.g. the file simply not existing) means the read wasn't blocked
-    /// by TCC. Reuses the real bookmark reader so the probe can't drift
-    /// from the actual access path.
+    /// by TCC. Uses `probeReadable` (memory-map, no whole-file read or
+    /// plist parse) rather than `readPlist` — this runs on the main thread
+    /// at launch and on every Settings appearance, so it must stay cheap
+    /// even for multi-MB bookmark libraries.
     private static func probeFullDiskAccess() -> Bool {
         if case .failure(.permissionDenied) =
-            SafariBookmarks.readPlist(at: BookmarksStore.defaultPlistPath) {
+            SafariBookmarks.probeReadable(at: BookmarksStore.defaultPlistPath) {
             return false
         }
         return true
@@ -542,6 +582,22 @@ final class AppModel: ObservableObject {
     func openFullDiskAccessSettings() {
         openSettings(url: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
         fullDiskAccessGranted = Self.probeFullDiskAccess()
+    }
+
+    /// Request the Apple-Events ("control Safari") grant from an explicit
+    /// user gesture (the Permissions-tab button). `requestAccess()` raises
+    /// the macOS consent dialog when the grant is still undetermined; if the
+    /// user previously denied it — macOS won't re-prompt in that case — we
+    /// deep-link the Automation pane so they can toggle Safari by hand. The
+    /// background URL poll never does this (it must not surprise the user
+    /// mid-task), which is why obtaining the grant lives here.
+    func requestAutomationAccess() {
+        if safariBridge.requestAccess() {
+            automationAccessGranted = true
+        } else {
+            openSettings(url: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")
+            automationAccessGranted = PermissionController.hasAppleEventsAccess
+        }
     }
 
     func safariFocusEditableChanged(_ isEditable: Bool) {
@@ -604,12 +660,17 @@ final class AppModel: ObservableObject {
 
     /// Cmd+Shift+H / Cmd+Shift+L handler. Drives Safari's
     /// `Window → Go to Previous / Next Tab Group` menu item via the
-    /// SafariBridge. If the click fails (older macOS, AX denied, no
-    /// tab groups defined yet) we surface a flash in `lastError` so
-    /// the user has a breadcrumb.
+    /// SafariBridge. If the click fails we surface a flash in `lastError`.
+    /// The message names the real constraints — VimKeys locates the menu
+    /// item by its English title, so a non-English Safari is the most
+    /// common cause, alongside Accessibility access and "no tab groups
+    /// defined yet" — rather than the previous misleading "menu wasn't
+    /// reachable", which pointed non-English users at the wrong thing.
     func navigateTabGroup(forward: Bool) {
         if !safariBridge.goToTabGroup(forward: forward) {
-            lastError = "Couldn't switch tab group (Safari's menu wasn't reachable)."
+            lastError = "Couldn't switch tab group. This works on an "
+                + "English-language Safari (the menu item is matched by name) "
+                + "with Accessibility access, and only when tab groups exist."
         }
     }
 

@@ -329,6 +329,7 @@ struct VimStateMachine {
         eventType: CGEventType,
         keyCode: CGKeyCode,
         characters: String?,
+        commandCharacters: String? = nil,
         flags: CGEventFlags,
         timestamp: UInt64
     ) -> VimDecision {
@@ -337,38 +338,79 @@ struct VimStateMachine {
             return VimDecision(intent: .passThrough)
         }
 
-        // Esc-Esc chord detection — runs BEFORE the disabled-mode pass-
-        // through so the user can un-suspend a page they previously
-        // suspended. First Esc records the timestamp; second Esc within
-        // the window emits `.toggleSuspended`.
+        // Disabled (Safari not frontmost): pass everything through
+        // untouched. The CGEventTap is session-wide, so the Esc-Esc chord
+        // detector must NOT run here — otherwise a routine double-tap of
+        // Escape in another app (terminal vim, a modal dialog, a game)
+        // would have its second Esc swallowed by `.toggleSuspended`.
+        // Clearing the timestamp stops a stale first-Esc from leaking
+        // across the Safari-frontmost boundary.
+        if case .disabled = mode {
+            lastEscTimestamp = nil
+            return VimDecision(intent: .passThrough)
+        }
+
+        // Help overlay: any key dismisses and is not re-dispatched. A
+        // dismissal is a real action, so it never arms the Esc-Esc chord.
+        if case .help = mode {
+            lastEscTimestamp = nil
+            return setMode(.normal(prefix: .none), intent: .dismissOverlay)
+        }
+
+        // Esc handling + Esc-Esc chord. Safari is frontmost here (incl.
+        // `.disabledBySite`, where the chord is the un-suspend gesture).
+        // Keycode-based, before character / modifier resolution, so it
+        // works in insert mode regardless of layout.
         if keyCode == VimKeyCode.escape {
+            // Second Esc within the window → suspend toggle.
             if let last = lastEscTimestamp, timestamp &- last <= Self.chordWindowNanoseconds {
                 lastEscTimestamp = nil
                 return VimDecision(intent: .toggleSuspended)
             }
-            lastEscTimestamp = timestamp
-        } else {
-            lastEscTimestamp = nil
+            // First Esc: resolve what it does locally, THEN decide whether
+            // to arm the chord. Only a plain no-op pass-through arms it —
+            // if this Esc dismissed an overlay, left insert mode, or
+            // cancelled a prefix, a reflexive second Esc must not be
+            // hijacked into a suspend (that misfire is the bug this guard
+            // fixes).
+            let escDecision = decideEscape()
+            lastEscTimestamp = (escDecision.intent == .passThrough) ? timestamp : nil
+            return escDecision
         }
 
-        // Disabled (Safari not frontmost) or disabled-by-site: pass
-        // through everything (incl. Esc).
-        if case .disabled = mode {
-            return VimDecision(intent: .passThrough)
-        }
+        // Any non-Esc key clears a pending chord arm.
+        lastEscTimestamp = nil
+
+        // Disabled-by-site: pass non-Esc keys through.
         if case .disabledBySite = mode {
             return VimDecision(intent: .passThrough)
         }
 
-        // Help overlay: any key dismisses and is not re-dispatched.
-        if case .help = mode {
-            return setMode(.normal(prefix: .none), intent: .dismissOverlay)
+        // A pending count / g / y prefix is only meaningful for the
+        // unmodified vim keys that reach `decideNormal`. The modifier
+        // chords (Cmd+H/L, Cmd+Shift+J/K) and the suppressed-modifier
+        // pass-through below bypass that dispatch entirely, so a prefix
+        // left standing would silently apply to the *next* motion
+        // (e.g. `5` → Cmd+H → `j` scrolling five lines). Cancel it now.
+        // Every key with a suppressor modifier returns via one of the
+        // tagged paths below, so a cleared prefix is always reported as a
+        // mode change — the mode-indicator pill renders the prefix
+        // ("-- NORMAL -- 5"), so it must refresh.
+        var prefixCleared = false
+        if case .normal(let prefix) = mode, prefix != .none,
+           !flags.intersection([.maskCommand, .maskAlternate, .maskControl]).isEmpty {
+            mode = .normal(prefix: .none)
+            prefixCleared = true
         }
-
-        // Esc handling is keycode-based, before character / modifier
-        // resolution, so it works in insert mode regardless of layout.
-        if keyCode == VimKeyCode.escape {
-            return decideEscape()
+        // Tag a chord / suppressor decision with the prefix-clear mode
+        // change so the indicator updates even though these paths don't
+        // otherwise transition mode.
+        func tagged(_ intent: VimIntent) -> VimDecision {
+            VimDecision(
+                intent: intent,
+                modeDidChange: prefixCleared,
+                newMode: prefixCleared ? .normal(prefix: .none) : nil
+            )
         }
 
         // Cmd+H / Cmd+L — tab navigation. Intercepted in any mode
@@ -381,12 +423,12 @@ struct VimStateMachine {
         if chordMods == .maskCommand {
             switch keyCode {
             case VimKeyCode.h:
-                return VimDecision(intent: .postKey(
+                return tagged(.postKey(
                     virtualKey: VimKeyCode.leftBracket,
                     flags: [.maskCommand, .maskShift]
                 ))
             case VimKeyCode.l:
-                return VimDecision(intent: .postKey(
+                return tagged(.postKey(
                     virtualKey: VimKeyCode.rightBracket,
                     flags: [.maskCommand, .maskShift]
                 ))
@@ -402,9 +444,9 @@ struct VimStateMachine {
         if chordMods == [.maskCommand, .maskShift] {
             switch keyCode {
             case VimKeyCode.j:
-                return VimDecision(intent: .nextTabGroup)
+                return tagged(.nextTabGroup)
             case VimKeyCode.k:
-                return VimDecision(intent: .previousTabGroup)
+                return tagged(.previousTabGroup)
             default:
                 break
             }
@@ -420,12 +462,18 @@ struct VimStateMachine {
         // Shift is allowed (it distinguishes `g` vs `G`, etc.).
         let suppressors: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl]
         if !flags.intersection(suppressors).isEmpty {
-            return VimDecision(intent: .passThrough)
+            return tagged(.passThrough)
         }
 
         switch mode {
         case .normal(let prefix):
-            return decideNormal(prefix: prefix, keyCode: keyCode, characters: characters)
+            // Normal-mode commands resolve against the case-sensitive
+            // binding table, so they use the Caps-Lock-free character
+            // (`commandCharacters`) — otherwise Caps Lock would uppercase
+            // `g`→`G` etc. and misfire. Hint/vomnibar text below keeps the
+            // raw `characters` so free-text entry still honors Caps Lock.
+            return decideNormal(prefix: prefix, keyCode: keyCode,
+                                characters: commandCharacters ?? characters)
         case .hint:
             return decideHint(characters: characters)
         case .vomnibar:

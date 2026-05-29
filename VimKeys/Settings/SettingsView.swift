@@ -38,12 +38,13 @@ struct SettingsView: View {
         let inputGranted = model.permissionState != .denied
         let accessibilityGranted = model.accessibilityGranted
         let fullDiskGranted = model.fullDiskAccessGranted
+        let automationGranted = model.automationAccessGranted
 
         return VStack(alignment: .leading, spacing: 16) {
             Text("Permissions")
                 .font(.title2.weight(.semibold))
 
-            Text("VimKeys needs Input Monitoring to read vim-style keys while Safari is frontmost. Accessibility is required to post scroll events, switch into insert mode on text inputs, and read link targets for hint mode. Full Disk Access is optional \u{2014} it lets VimKeys read Safari\u{2019}s bookmarks directly.")
+            Text("VimKeys needs Input Monitoring to read vim-style keys while Safari is frontmost. Accessibility is required to post scroll events, switch into insert mode on text inputs, and read link targets for hint mode. Automation and Full Disk Access are optional \u{2014} Automation lets VimKeys read Safari\u{2019}s URL (per-site disabling, yy, o/O, T) and Full Disk Access lets it read Safari\u{2019}s bookmarks directly.")
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 10) {
@@ -57,6 +58,15 @@ struct SettingsView: View {
                     title: "Accessibility",
                     granted: accessibilityGranted,
                     action: { model.requestAccessibility() }
+                )
+
+                permissionRow(
+                    title: "Automation (Safari)",
+                    granted: automationGranted,
+                    optional: true,
+                    detail: "Optional. Lets VimKeys read Safari\u{2019}s current URL (per-site disabling + Esc-Esc suspend), copy the page link (\u{0060}yy\u{0060}), open URLs (\u{0060}o\u{0060} / \u{0060}O\u{0060} / \u{0060}p\u{0060} / \u{0060}P\u{0060}), and switch tabs (\u{0060}T\u{0060}). Click to grant, or enable VimKeys under Safari in System Settings \u{2192} Privacy & Security \u{2192} Automation.",
+                    buttonLabel: "Grant Automation Access\u{2026}",
+                    action: { model.requestAutomationAccess() }
                 )
 
                 permissionRow(

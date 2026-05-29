@@ -117,10 +117,24 @@ enum PermissionController {
         AXIsProcessTrustedWithOptions(nil)
     }
 
-    /// V-M1 stub. V-M4 wires this to the real Apple Events TCC check so the
-    /// vomnibar / yy bindings can prompt + degrade gracefully if the user
-    /// hasn't granted "control Safari".
+    /// Real Apple-Events (Automation) TCC check for vanilla Safari — the app
+    /// VimKeys scripts by default and the one the Settings → Permissions row
+    /// reports on. `promptIfNeeded: false` keeps reading it side-effect-free;
+    /// the consent dialog is raised only by an explicit user action
+    /// (`SafariBridge.requestAccess()` or sending an Apple Event via a
+    /// keypress), never by a status read. Settings is never open while a
+    /// Safari-family app is frontmost, so targeting `com.apple.Safari` here
+    /// matches what the runtime `SafariBridge` will hit.
     static var hasAppleEventsAccess: Bool {
-        false
+        var addressDesc = AEDesc()
+        let bundleID = Data("com.apple.Safari".utf8)
+        let createStatus = bundleID.withUnsafeBytes { bytes in
+            AECreateDesc(typeApplicationBundleID, bytes.baseAddress, bundleID.count, &addressDesc)
+        }
+        guard createStatus == noErr else { return false }
+        defer { AEDisposeDesc(&addressDesc) }
+        return AEDeterminePermissionToAutomateTarget(
+            &addressDesc, typeWildCard, typeWildCard, false
+        ) == noErr
     }
 }

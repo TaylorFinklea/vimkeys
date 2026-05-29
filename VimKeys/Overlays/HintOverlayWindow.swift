@@ -13,6 +13,10 @@ final class HintOverlayWindow: NSPanel {
         @Published var labels: [LinkHintEngine.Assignment] = []
         @Published var typedPrefix: String = ""
         @Published var matching: Set<UUID> = []
+        /// Top-left of the overlay panel in AX global coordinates. Badge
+        /// positions (also AX coords) are made panel-relative by subtracting
+        /// this. `(0, 0)` on the primary display; non-zero on any other.
+        @Published var panelAXOrigin: CGPoint = .zero
     }
 
     let viewModel = ViewModel()
@@ -41,6 +45,15 @@ final class HintOverlayWindow: NSPanel {
         let target = screen ?? NSScreen.main ?? NSScreen.screens.first
         if let target {
             setFrame(target.frame, display: true)
+            // The panel's frame is Cocoa (bottom-left); badge frames are AX
+            // (top-left). Record the panel's top-left in AX space so the
+            // SwiftUI content can place each badge relative to it — without
+            // this the badges only landed correctly on the primary display.
+            let panelAX = ScreenCoordinates.flip(
+                target.frame,
+                primaryHeight: ScreenCoordinates.primaryDisplayHeight
+            )
+            viewModel.panelAXOrigin = CGPoint(x: panelAX.minX, y: panelAX.minY)
         }
         orderFrontRegardless()
     }
@@ -51,50 +64,32 @@ final class HintOverlayWindow: NSPanel {
 }
 
 /// SwiftUI overlay: a single ZStack of label pills, one per assignment.
-/// Position is computed from the target's AX frame (screen coordinates)
-/// flipped into Cocoa coordinates relative to the overlay window.
+/// Each badge's AX frame (top-left origin, global) is made panel-relative
+/// by subtracting the panel's AX origin, then placed via `.offset` so the
+/// badge's *top-left* sits at the target's top-left. (The previous
+/// `.position` anchored the badge's *center* there — a half-badge offset —
+/// and ignored the panel origin entirely, so both broke off the primary
+/// display.)
 private struct HintOverlayContent: View {
     @ObservedObject var viewModel: HintOverlayWindow.ViewModel
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .topLeading) {
-                ForEach(viewModel.labels, id: \.target.id) { assignment in
-                    HintBadge(
-                        label: assignment.label,
-                        typedPrefix: viewModel.typedPrefix,
-                        active: viewModel.matching.isEmpty || viewModel.matching.contains(assignment.target.id),
-                        kind: assignment.target.kind
-                    )
-                    .position(
-                        x: assignment.target.frame.minX - flipOriginX(proxy: proxy),
-                        y: flippedY(for: assignment.target.frame, proxy: proxy)
-                    )
-                }
+        ZStack(alignment: .topLeading) {
+            ForEach(viewModel.labels, id: \.target.id) { assignment in
+                HintBadge(
+                    label: assignment.label,
+                    typedPrefix: viewModel.typedPrefix,
+                    active: viewModel.matching.isEmpty || viewModel.matching.contains(assignment.target.id),
+                    kind: assignment.target.kind
+                )
+                .offset(
+                    x: assignment.target.frame.minX - viewModel.panelAXOrigin.x,
+                    y: assignment.target.frame.minY - viewModel.panelAXOrigin.y
+                )
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .ignoresSafeArea()
-    }
-
-    /// AX frames are in screen coords with origin at the upper-left of the
-    /// primary display. The overlay panel covers a single screen so we
-    /// subtract that screen's origin to get window-relative X.
-    private func flipOriginX(proxy: GeometryProxy) -> CGFloat {
-        // GeometryReader's frame doesn't expose the screen origin directly,
-        // but since we set the panel frame to screen.frame, the X conversion
-        // simplifies to "subtract panel origin", which SwiftUI takes care
-        // of by treating (0, 0) as the top-left of the panel.
-        _ = proxy
-        return 0
-    }
-
-    /// Convert AX frame (top-left origin, Y growing downward in some
-    /// contexts, upward in others depending on macOS version) to SwiftUI
-    /// position. On macOS AX returns Y growing downward from the top of
-    /// the primary display, matching what SwiftUI expects for a top-leading
-    /// ZStack alignment.
-    private func flippedY(for frame: CGRect, proxy _: GeometryProxy) -> CGFloat {
-        frame.minY
     }
 }
 

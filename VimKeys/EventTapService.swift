@@ -2,20 +2,44 @@ import AppKit
 import CoreGraphics
 import Foundation
 
-struct SleepWakeHandler {
-    var reEnableTap: () -> Void
-    var isTapAlive: () -> Bool
-    var restartEngine: () -> Void
-    var onError: (String) -> Void
-    var onRecover: () -> Void
+/// Reference type on purpose. `didWake()` re-enters `EventTapService`'s
+/// `stop()`/`start()` via `restartEngine`, and `start()` reassigns the
+/// service's `sleepWakeHandler` to a brand-new handler. With a *value*
+/// type, the optional-chained mutating call (`sleepWakeHandler?.didWake()`)
+/// writes the stale struct back when it returns, clobbering that
+/// freshly-installed handler — so every sleep/wake after the first finds
+/// its `[weak engine]` captures pointing at the dead engine and silently
+/// stops re-enabling the tap. A class mutates in place, so the
+/// reassignment sticks. Main-thread-confined (the willSleep/didWake
+/// observers use `queue: .main`), so no extra synchronization is needed.
+final class SleepWakeHandler {
+    private let reEnableTap: () -> Void
+    private let isTapAlive: () -> Bool
+    private let restartEngine: () -> Void
+    private let onError: (String) -> Void
+    private let onRecover: () -> Void
 
-    private(set) var sleepPending = false
+    private var sleepPending = false
 
-    mutating func willSleep() {
+    init(
+        reEnableTap: @escaping () -> Void,
+        isTapAlive: @escaping () -> Bool,
+        restartEngine: @escaping () -> Void,
+        onError: @escaping (String) -> Void,
+        onRecover: @escaping () -> Void
+    ) {
+        self.reEnableTap = reEnableTap
+        self.isTapAlive = isTapAlive
+        self.restartEngine = restartEngine
+        self.onError = onError
+        self.onRecover = onRecover
+    }
+
+    func willSleep() {
         sleepPending = true
     }
 
-    mutating func didWake() {
+    func didWake() {
         guard sleepPending else { return }
         sleepPending = false
 

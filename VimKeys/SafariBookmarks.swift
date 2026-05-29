@@ -86,6 +86,32 @@ enum SafariBookmarks {
         return .success(entries)
     }
 
+    /// Cheap Full Disk Access probe, co-located with `readPlist` so the
+    /// permission-denied detection can't drift from the real read path.
+    /// Memory-maps the file (`.mappedIfSafe`, no eager whole-file read) and
+    /// skips the plist parse entirely — the only question is whether the
+    /// *open* was permitted. `.permissionDenied` means FDA is off;
+    /// `.fileMissing` means Safari hasn't written bookmarks yet. Used by the
+    /// Settings permission probe, which runs on the main thread on every
+    /// appearance, so it must not do the multi-MB read + parse `readPlist`
+    /// does.
+    static func probeReadable(at url: URL) -> Result<Void, ReadError> {
+        do {
+            _ = try Data(contentsOf: url, options: .mappedIfSafe)
+            return .success(())
+        } catch let error as NSError {
+            if error.domain == NSCocoaErrorDomain,
+               error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError {
+                return .failure(.fileMissing)
+            }
+            if error.domain == NSCocoaErrorDomain,
+               error.code == NSFileReadNoPermissionError {
+                return .failure(.permissionDenied)
+            }
+            return .failure(.malformed)
+        }
+    }
+
     /// Reads Safari's own bookmark store at `~/Library/Safari/Bookmarks.plist`.
     /// This is the live-sync path — Safari rewrites the file whenever the
     /// user adds, edits, or removes a bookmark, so VimKeys always sees

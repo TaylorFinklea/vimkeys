@@ -26,8 +26,10 @@ final class HelpOverlayWindow: NSPanel {
         contentView = NSHostingView(rootView: HelpOverlayContent())
     }
 
-    /// Center on whichever screen Safari's focused window is on. Falls back
-    /// to the main screen when Safari isn't placeable.
+    /// Center on the active screen (`NSScreen.main` — the one with keyboard
+    /// focus). The help overlay is only shown while Safari is frontmost, so
+    /// the active screen is Safari's screen in practice; falls back to
+    /// `center()` if there's somehow no main screen.
     func presentCentered() {
         if let screen = NSScreen.main {
             let frame = screen.visibleFrame

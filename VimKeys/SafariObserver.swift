@@ -250,8 +250,18 @@ final class AXFocusObserver {
         guard let userInfo else { return }
         let snapshot = readRoleSnapshot(of: element)
         let isEditable = isEditableFocus(snapshot)
+        // Take a STRONG reference to the Bridge synchronously, inside the
+        // callback, before deferring to the MainActor. `userInfo` is an
+        // *unretained* pointer (registered via `Unmanaged.passUnretained`),
+        // and `stop()`/`detachAXFocusObserver()` can run between this
+        // callback returning and the Task draining — e.g. Cmd-Tab away from
+        // Safari right after a focus change. Dereferencing the unretained
+        // pointer inside the Task would then be a use-after-free. Capturing
+        // a strong ref here keeps the Bridge alive until the Task runs; its
+        // `onFocusChange` closure already weakly captures the observer, so a
+        // late callback is a harmless no-op rather than a crash.
+        let bridge = Unmanaged<Bridge>.fromOpaque(userInfo).takeUnretainedValue()
         Task { @MainActor in
-            let bridge = Unmanaged<Bridge>.fromOpaque(userInfo).takeUnretainedValue()
             bridge.onFocusChange?(isEditable)
         }
     }

@@ -710,6 +710,146 @@ final class VimStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.mode, .normal(prefix: .none))
     }
 
+    // MARK: - Esc-Esc chord (suspend toggle): F33 / F10 regressions
+
+    /// The intended feature still works: two plain Escs within the window
+    /// while in normal mode toggle the per-site suspend.
+    func testEscEscInNormalModeTogglesSuspend() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let first = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                   characters: nil, flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(first.intent, .passThrough)
+        let second = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                    characters: nil, flags: [],
+                                    timestamp: baseTimestamp + 100_000_000)
+        XCTAssertEqual(second.intent, .toggleSuspended)
+    }
+
+    /// Two Escs spaced further apart than the chord window do NOT toggle —
+    /// the second is just another plain Esc.
+    func testEscEscOutsideWindowDoesNotToggle() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                           characters: nil, flags: [], timestamp: baseTimestamp)
+        let second = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                    characters: nil, flags: [],
+                                    timestamp: baseTimestamp + 400_000_000)
+        XCTAssertEqual(second.intent, .passThrough)
+    }
+
+    /// F33: the CGEventTap is session-wide. When Safari is NOT frontmost
+    /// (mode `.disabled`), a double-tap of Escape in another app must pass
+    /// BOTH presses through — the second must never be swallowed by the
+    /// suspend chord.
+    func testEscEscWhileDisabledPassesBothThrough() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        // No updateSafariFrontmost → stays `.disabled`.
+        let first = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                   characters: nil, flags: [], timestamp: baseTimestamp)
+        let second = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                    characters: nil, flags: [],
+                                    timestamp: baseTimestamp + 100_000_000)
+        XCTAssertEqual(first.intent, .passThrough)
+        XCTAssertEqual(second.intent, .passThrough)
+        XCTAssertEqual(machine.mode, .disabled)
+    }
+
+    /// F10: dismissing the help overlay with Esc must not arm the chord —
+    /// a reflexive second Esc is a plain no-op, not a suspend.
+    func testEscToDismissHelpThenEscDoesNotSuspend() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x2C, characters: "?",
+                           flags: .maskShift, timestamp: baseTimestamp)
+        let dismiss = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                     characters: nil, flags: [],
+                                     timestamp: baseTimestamp + 100_000_000)
+        XCTAssertEqual(dismiss.intent, .dismissOverlay)
+        let reflexive = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                       characters: nil, flags: [],
+                                       timestamp: baseTimestamp + 150_000_000)
+        XCTAssertEqual(reflexive.intent, .passThrough)
+    }
+
+    /// F10: leaving insert mode with Esc must not arm the chord either.
+    func testEscToLeaveInsertThenEscDoesNotSuspend() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x22, characters: "i",
+                           flags: [], timestamp: baseTimestamp)
+        let leave = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                   characters: nil, flags: [],
+                                   timestamp: baseTimestamp + 100_000_000)
+        XCTAssertEqual(leave.intent, .unfocusActiveElement)
+        let reflexive = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.escape,
+                                       characters: nil, flags: [],
+                                       timestamp: baseTimestamp + 150_000_000)
+        XCTAssertEqual(reflexive.intent, .passThrough)
+    }
+
+    // MARK: - Pending prefix reset on modifier chord (F7)
+
+    /// A buffered count must be cancelled by an intervening Cmd chord so it
+    /// doesn't silently apply to the next motion.
+    func testCountPrefixClearedByCmdChord() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x17, characters: "5",
+                           flags: [], timestamp: baseTimestamp)
+        XCTAssertEqual(machine.mode, .normal(prefix: .count(5)))
+
+        // Cmd+H (tab nav) bypasses normal dispatch — it must reset the count.
+        let chord = machine.decide(eventType: .keyDown, keyCode: VimKeyCode.h,
+                                   characters: "h", flags: .maskCommand,
+                                   timestamp: baseTimestamp + 50_000_000)
+        XCTAssertEqual(chord.intent, .postKey(virtualKey: VimKeyCode.leftBracket,
+                                              flags: [.maskCommand, .maskShift]))
+        XCTAssertEqual(machine.mode, .normal(prefix: .none))
+        // The cleared prefix must be reported as a mode change so the mode
+        // indicator (which renders "-- NORMAL -- 5") refreshes.
+        XCTAssertTrue(chord.modeDidChange)
+        XCTAssertEqual(chord.newMode, .normal(prefix: .none))
+
+        // The following `j` scrolls one line, not five.
+        let motion = machine.decide(eventType: .keyDown, keyCode: 0x26, characters: "j",
+                                    flags: [], timestamp: baseTimestamp + 100_000_000)
+        XCTAssertEqual(motion.intent, .scroll(direction: .vertical,
+                                              amount: .lines(-VimStateMachine.scrollLinesPerPress)))
+    }
+
+    // MARK: - Caps Lock routing (F6)
+
+    /// With Caps Lock on, the engine resolves a Caps-Lock-free
+    /// `commandCharacters` ("j") even though the raw character is "J".
+    /// Normal-mode dispatch must use the former so the binding still fires.
+    func testCapsLockUsesCommandCharacterForNormalDispatch() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x26, characters: "J",
+                               commandCharacters: "j", flags: .maskAlphaShift,
+                               timestamp: baseTimestamp)
+        XCTAssertEqual(d.intent, .scroll(direction: .vertical,
+                                         amount: .lines(-VimStateMachine.scrollLinesPerPress)))
+    }
+
+    /// Vomnibar text entry keeps the raw character so Caps Lock is still
+    /// honored while typing a URL / query.
+    func testCapsLockKeepsRawCharacterForVomnibarText() {
+        var machine = VimStateMachine(settings: defaultSettings())
+        machine.updateSafariFrontmost(true)
+        _ = machine.decide(eventType: .keyDown, keyCode: 0x1F, characters: "o",
+                           flags: [], timestamp: baseTimestamp)
+        guard case .vomnibar = machine.mode else {
+            return XCTFail("expected vomnibar mode after `o`")
+        }
+        let d = machine.decide(eventType: .keyDown, keyCode: 0x26, characters: "J",
+                               commandCharacters: "j", flags: .maskAlphaShift,
+                               timestamp: baseTimestamp + 50_000_000)
+        XCTAssertEqual(d.intent, .forwardVomnibarKey("J"))
+    }
+
     // MARK: - Insert mode + AX focus auto-detect
 
     func testUpdateFocusEditableEntersInsertWhenAutoDetect() {

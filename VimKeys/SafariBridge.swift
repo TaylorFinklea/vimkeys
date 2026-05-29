@@ -14,10 +14,25 @@ import Foundation
 struct SafariBridge {
     static let shared = SafariBridge()
 
-    /// Bundle ID of vanilla Safari. Tech Preview has a different bundle
-    /// and would need separate scripting targets if we ever wanted to
-    /// support it — for now, all scripts target `com.apple.Safari`.
-    private static let safariBundleID = "com.apple.Safari"
+    /// Vanilla Safari's bundle ID — the fallback target when no
+    /// Safari-family app is frontmost.
+    private static let fallbackBundleID = "com.apple.Safari"
+
+    /// The Safari-family bundle ID to script. `SafariObserver` activates
+    /// VimKeys for both Safari and Safari Technology Preview, so when one
+    /// of those is frontmost we target THAT app — otherwise the URL poll,
+    /// `yy` copy, `o`/`O` open, and tab-group nav would all hit a possibly
+    /// closed or background vanilla-Safari window (and the Automation
+    /// permission check would target the wrong app). Falls back to vanilla
+    /// Safari when nothing Safari-family is frontmost. Resolved per call
+    /// because the frontmost app changes at runtime.
+    private var activeBundleID: String {
+        if let frontmost = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+           SafariObserver.safariBundleIDs.contains(frontmost) {
+            return frontmost
+        }
+        return Self.fallbackBundleID
+    }
 
     /// True iff TCC has approved this app's right to send Apple Events to
     /// Safari. `false` while we haven't asked yet (prompt-driven) OR
@@ -38,8 +53,9 @@ struct SafariBridge {
     /// Returns the URL of Safari's frontmost tab, or nil if Safari has no
     /// open windows OR we don't have Automation permission.
     func currentURL() -> URL? {
+        let bundleID = activeBundleID
         let result = run(script: """
-        tell application id "\(Self.safariBundleID)"
+        tell application id "\(bundleID)"
             if (count of windows) = 0 then return ""
             return URL of current tab of front window as string
         end tell
@@ -52,8 +68,9 @@ struct SafariBridge {
     func openTabs() -> [Tab] {
         // AppleScript returns two parallel lists of strings; the bridge
         // returns them as a single tab-delimited string we split here.
+        let bundleID = activeBundleID
         let result = run(script: """
-        tell application id "\(Self.safariBundleID)"
+        tell application id "\(bundleID)"
             set tabList to {}
             repeat with w in windows
                 repeat with t in tabs of w
@@ -76,10 +93,11 @@ struct SafariBridge {
     /// Safari has none). Returns true if the script ran without error.
     @discardableResult
     func open(url: URL, inNewTab: Bool) -> Bool {
+        let bundleID = activeBundleID
         let script: String
         if inNewTab {
             script = """
-            tell application id "\(Self.safariBundleID)"
+            tell application id "\(bundleID)"
                 tell window 1 to set newTab to make new tab with properties {URL:"\(url.absoluteString.aeEscaped)"}
                 set current tab of window 1 to newTab
                 activate
@@ -87,7 +105,7 @@ struct SafariBridge {
             """
         } else {
             script = """
-            tell application id "\(Self.safariBundleID)"
+            tell application id "\(bundleID)"
                 if (count of windows) = 0 then
                     make new document with properties {URL:"\(url.absoluteString.aeEscaped)"}
                 else
@@ -112,8 +130,9 @@ struct SafariBridge {
     @discardableResult
     func goToTabGroup(forward: Bool) -> Bool {
         let target = forward ? "Go to Next Tab Group" : "Go to Previous Tab Group"
+        let bundleID = activeBundleID
         guard let pid = NSWorkspace.shared.runningApplications
-            .first(where: { $0.bundleIdentifier == Self.safariBundleID })?
+            .first(where: { $0.bundleIdentifier == bundleID })?
             .processIdentifier
         else { return false }
 
@@ -181,8 +200,9 @@ struct SafariBridge {
     /// vomnibar to jump.
     @discardableResult
     func focusTab(matching url: URL) -> Bool {
+        let bundleID = activeBundleID
         let script = """
-        tell application id "\(Self.safariBundleID)"
+        tell application id "\(bundleID)"
             repeat with w in windows
                 repeat with t in tabs of w
                     if (URL of t as string) = "\(url.absoluteString.aeEscaped)" then
@@ -213,7 +233,7 @@ struct SafariBridge {
     /// `errAEEventNotPermitted` without an intermediate enum (which
     /// trips Swift's overload resolver on the `.success` case name).
     private func checkAutomationPermission(promptIfNeeded: Bool) -> OSStatus {
-        var addressDesc = AEAddressDescriptor.descriptor(forBundleID: Self.safariBundleID)
+        var addressDesc = AEAddressDescriptor.descriptor(forBundleID: activeBundleID)
         defer { AEDisposeDesc(&addressDesc) }
         return AEDeterminePermissionToAutomateTarget(
             &addressDesc,

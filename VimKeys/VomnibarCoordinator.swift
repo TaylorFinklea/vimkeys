@@ -46,6 +46,13 @@ final class VomnibarCoordinator {
             tabs = bridge.openTabs()
             bookmarks = []
             window.viewModel.mode = .tabs
+            // Automation access is already guaranteed (guarded above) and a
+            // frontmost Safari always has at least one tab, so an empty list
+            // here is a transient AppleScript hiccup, not "no tabs" — give
+            // the user a breadcrumb instead of a silently empty switcher.
+            if tabs.isEmpty {
+                onError?("Couldn't read Safari's open tabs \u{2014} try again in a moment.")
+            }
         case .bookmarks:
             tabs = []
             switch BookmarksStore.shared.current() {

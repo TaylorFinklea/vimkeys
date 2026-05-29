@@ -20,6 +20,12 @@ final class LinkHintCoordinator {
     /// wires it to `EventTapService.exitHintMode()`.
     var onExitHintMode: (() -> Void)?
 
+    /// Surfaces an actionable failure (mirrors `VomnibarCoordinator.onError`
+    /// → `AppModel.lastError`). Used for the Accessibility-trust-missing
+    /// case so `f`/`F` doing nothing isn't indistinguishable from a page
+    /// with no links. AppModel wires it to the error flash.
+    var onError: ((String) -> Void)?
+
     private let overlay = HintOverlayWindow()
     private var engine: LinkHintEngine?
     private var elementByID: [UUID: AXUIElement] = [:]
@@ -38,6 +44,8 @@ final class LinkHintCoordinator {
         self.typedPrefix = ""
 
         guard PermissionController.hasAccessibilityTrust else {
+            onError?("VimKeys needs Accessibility access to read link targets. "
+                + "Grant it in System Settings \u{2192} Privacy & Security \u{2192} Accessibility.")
             exit()
             return
         }
@@ -48,10 +56,17 @@ final class LinkHintCoordinator {
         }
 
         let screen = currentSafariScreen()
+        // `AXLinkExtractor` filters against AX-space frames, so the screen
+        // bounds must be flipped from Cocoa into AX space first — otherwise
+        // the visibility cull compares mismatched coordinate systems and
+        // discards on-screen targets on secondary displays.
+        let screenBounds = screen.map {
+            ScreenCoordinates.flip($0.frame, primaryHeight: ScreenCoordinates.primaryDisplayHeight)
+        }
         let extracted = AXLinkExtractor.extract(
             from: pid,
             filter: filter,
-            screenBounds: screen?.frame
+            screenBounds: screenBounds
         )
 
         guard !extracted.isEmpty else {
@@ -242,7 +257,17 @@ final class LinkHintCoordinator {
                 let value = axValue as! AXValue
                 var rect = CGRect.zero
                 if AXValueGetValue(value, .cgRect, &rect) {
-                    return NSScreen.screens.first { $0.frame.intersects(rect) } ?? NSScreen.main
+                    // `rect` is the window frame in AX space (top-left
+                    // origin); `NSScreen.frame` is Cocoa (bottom-left).
+                    // Flip before intersecting or the match only works on
+                    // the primary display — a vertically-stacked secondary
+                    // display would never intersect and we'd fall back to
+                    // the wrong screen.
+                    let cocoaRect = ScreenCoordinates.flip(
+                        rect,
+                        primaryHeight: ScreenCoordinates.primaryDisplayHeight
+                    )
+                    return NSScreen.screens.first { $0.frame.intersects(cocoaRect) } ?? NSScreen.main
                 }
             }
         }

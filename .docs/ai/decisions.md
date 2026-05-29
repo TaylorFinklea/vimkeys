@@ -32,3 +32,17 @@
 **Context**: AX frames (top-left origin, Y down) were compared against / positioned within `NSScreen.frame` (bottom-left origin, Y up). They coincide only on the primary display, so hint overlays, screen selection, and the visibility filter all broke on secondary monitors (F25/26/27).
 **Decision**: A pure, unit-tested `ScreenCoordinates.flip` (involution pivoting on primary-display height) + `pointInPanel`. Hint badges now position via `.offset` from the panel's AX origin (also fixes the half-badge center-anchor offset, F28).
 **Rationale**: One tested conversion instead of ad-hoc mixing. The math is unit-tested; the AX/AppKit integration needs on-hardware multi-monitor verification.
+
+## [2026-05-29] Key remapping scoped to character bindings; modifier chords + Esc stay fixed
+
+**Context**: Shipping user-remappable bindings (F35). The bindings table (`VimBindings`) only holds the character-based normal-mode chords (single + g/y prefix). The modifier chords (Cmd+H/L, Cmd+Shift+J/K) and Esc/Esc-Esc are resolved by keycode in `VimStateMachine.decide(...)`, outside the table.
+**Decision**: v1 remaps only the character bindings. Modifier chords + Esc are shown as fixed. Persistence via `BindingsStore` (schema-versioned JSON, mirrors `SitesStore`); the help overlay + a new Settings → Keys tab both render from the live reverse index so they can't drift.
+**Guardrails (from adversarial review)**: reject `g`/`y` and digits for single-char chords (the state machine resolves them before the single-char table, so such a binding would be silently dead); block conflicts and keep every command reachable (rebinding falls back to the default shape so an unbound command stays recoverable in the UI).
+**Alternatives considered**: a full keycode+modifier chord model that would also make the modifier chords remappable — deferred as a larger model change. **Rationale**: the character bindings are what users actually want to remap; the keycode chords are few and have sensible defaults.
+
+## [2026-05-29] AppModel decomposition done incrementally, not big-bang
+
+**Context**: F36 flagged AppModel as a ~700-line god object.
+**Decision**: Extract one focused, testable collaborator at a time with the suite green between. Done: `SafariURLPoller` (F36.1 — the recently-buggy poll seam, now unit-tested) and `QueryURL` (F36.3 — de-dups clipboard + vomnibar URL/search resolution).
+**Deferred**: `PermissionsModel` (F36.2) — extracting the four permission flags would churn every view that reads `model.permissionState`/etc. for no user benefit and real regression risk; `wiring cleanup` (F36.4) — negligible value now that the poller extraction reduced the engine callbacks to one-liners.
+**Rationale**: The poll seam was worth isolating (it caused real field bugs and is now tested); the rest is cosmetic. A big-bang AppModel rewrite trades real regression risk for no user-visible gain.

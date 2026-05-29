@@ -4,29 +4,33 @@
 
 ## Active Branch
 
-`main`
+`main` — pushed through the 0.7.13 release tag; feature work after it is committed but **not pushed**.
 
 ## Last Session Summary
 
-**Date**: 2026-05-28
+**Date**: 2026-05-29
 
-- Ran a multi-agent bug + design audit of the whole app (9 dimensions → triage → 3-lens adversarial verification). 40 raw → 37 deduped → **27 confirmed** findings (10 rejected as false alarms).
-- Fixed 25 of 27 in 8 clusters (A–H), each with regression tests where unit-testable. Adversarially reviewed the diff (3 reviewers); fixed the one regression they found (stale mode-indicator on prefix-clear). All committed in one sweep.
-- Net: +~700 LOC, 161 → **181 tests, all passing**. Build clean (only the 2 pre-existing `EventTapService` Sendable warnings remain).
-- Headline fixes: Esc-Esc no longer swallows the 2nd Esc system-wide (F33); Caps Lock no longer breaks navigation (F6); sleep/wake recovery no longer dies after the first cycle (F5); AX-focus use-after-free closed (F2); blocklist now handles IPv6/IDN/trailing-dot (F11/12/13); the URL poll no longer pops the Automation prompt from a background timer and no longer flaps disabled sites on transient nils / backgrounding (F15/F20/F21); Automation permission row added to Settings + the dead `hasAppleEventsAccess` stub wired (F17); SafariBridge now targets the frontmost Safari-family app (F34); multi-screen hint coordinate math fixed (F25/26/27/28/29).
+- **Shipped 0.7.13** (the audit-fix release): bumped, notarized, stapled, GitHub release with `VimKeys.zip` + signed `appcast.xml`, Homebrew tap bumped + pushed. The in-app updater serves it (feed → version 25). Contains the 25 audit fixes (commit `dec6941`), including the multi-screen hint coordinate fix the user wants to test.
+- **F36.1** — extracted `SafariURLPoller` from AppModel (timer + hasAccess gate + transient-nil skip + dedupe), now unit-tested via an injected fake bridge.
+- **F35 (full)** — user-remappable key bindings:
+  - F35.1: `VimBindings`/`VimCommand` Codable; `BindingsStore` (schema-versioned, mirrors SitesStore); `Chord` + reverse index + rebind/conflict/completeness helpers.
+  - F35.2: help overlay renders from live bindings (`HelpReference` + per-command metadata) — no more drift.
+  - F35.3: **Settings → Keys** tab with press-to-capture remapping (single + g/y-prefix chords; modifier chords + Esc fixed).
+  - Hardening (from adversarial review): reserve `g`/`y` for single-char chords (they trigger prefix modes), keep an unbound command recoverable, single capture monitor.
+- **F36.3** — extracted a shared, tested `QueryURL` resolver (de-dups clipboard paste-and-go + vomnibar URL/search logic).
+- Commits since release: `b2f28bc` (poller), `7036e66` (bindings model), `cb51cbb` (help-from-bindings), `d08e7a2` (Keys UI), `0455228` (QueryURL), `e0f047b` (remap hardening).
 
 ## Build Status
 
-- Tests: **181/181 passing** (`xcodegen generate` + `xcodebuild -scheme VimKeys -configuration Debug -destination 'platform=macOS' test`).
-- Build: clean. Pre-existing debt: 2 `EventTapService` strict-concurrency warnings (non-Sendable `self` captured in `.main` NSWorkspace observer blocks) — predate this work, out of scope.
+- Tests: **208/208 passing** (`xcodegen generate` + `xcodebuild -scheme VimKeys -configuration Debug -destination 'platform=macOS' test`). Was 161 at the start of the audit.
+- Build clean. Pre-existing debt: 2 `EventTapService` strict-concurrency warnings (predate this work).
 
 ## Blockers
 
-- **0.7.12 release still blocked** on the vanished `vimkeys-notarytool` keychain credential (unrelated to this work). Re-store with `xcrun notarytool store-credentials vimkeys-notarytool --apple-id "taylor.finklea@icloud.com" --team-id K7CBQW6MPG` before publishing.
+- None. (The notary credential `vimkeys-notarytool` was re-stored by the user and works.)
 
-## Open / deferred
+## Open / next
 
-- **F37** (US-QWERTY fallback can mismap on non-QWERTY layouts during the ~100ms launch window / on UCKeyTranslate failure): accepted, already documented in `KeyboardLayoutCache`. No code change.
-- **Multi-screen fixes (F25/26/27/28/29)** need on-hardware verification on a real multi-monitor (esp. vertically-stacked) setup — the coordinate math is unit-tested (`ScreenCoordinatesTests`) but the AX/AppKit integration can't be unit-tested.
-- Two findings rejected by verification as not-real: covered in the phases report.
-- Changes are committed but **not pushed** (per repo convention — review then push).
+- **Feature work (F35/F36) is committed on `main` but NOT pushed and NOT released** — it'll go into the next release (0.7.14) when the user decides. 0.7.13 shipped only the audit fixes.
+- **Verify on hardware**: multi-screen hint positioning (0.7.13) and the new Keys remap UI (press-to-capture, conflict/reset) — both have logic tests but need an interactive pass.
+- **Deferred (backlog, see roadmap.md):** F36.2 PermissionsModel extraction (high view-churn, low benefit); F36.4 callback-wiring cleanup (negligible after the poller extraction); F35 stretch: make modifier chords (Cmd+H/L, Cmd+Shift+J/K) and Esc remappable (needs a keycode-chord model, larger).

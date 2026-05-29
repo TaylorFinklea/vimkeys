@@ -9,11 +9,11 @@ final class OverlayManager {
     private var helpWindow: HelpOverlayWindow?
     private var modeIndicator: ModeIndicatorWindow?
 
-    func showHelp() {
+    func showHelp(bindings: VimBindings) {
         if helpWindow == nil {
             helpWindow = HelpOverlayWindow()
         }
-        helpWindow?.presentCentered()
+        helpWindow?.presentCentered(bindings: bindings)
     }
 
     func dismiss() {

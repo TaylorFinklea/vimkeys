@@ -163,7 +163,7 @@ final class AppModel: ObservableObject {
             hopToMain { self?.tapErrorActive = false }
         }
         service.onShowHelp = { [weak self] in
-            hopToMain { self?.overlayManager.showHelp() }
+            hopToMain { self?.overlayManager.showHelp(bindings: self?.settings.bindings ?? .v1Default) }
         }
         service.onDismissOverlay = { [weak self] in
             hopToMain {

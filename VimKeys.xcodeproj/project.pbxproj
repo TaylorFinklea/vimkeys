@@ -43,7 +43,9 @@
 		8607C42F6D5CBCD2B1C6B33F /* ScreenCoordinatesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF152EBC2DC52AEF0D2643EB /* ScreenCoordinatesTests.swift */; };
 		8DB4853FBB289C68E5CC4D6E /* VomnibarCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */; };
 		92BAE5C984A99769E4A08A82 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 034AE2C7D5C982723685AA72 /* SettingsView.swift */; };
+		95849EB4D964905BF06D1EEA /* HelpReferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBA07CEBEB9E6F8A9D7F0F4E /* HelpReferenceTests.swift */; };
 		9DEADF1AEF0CEDAF8290A2B1 /* VomnibarWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F53A03E5FDE7D7B92D5901 /* VomnibarWindow.swift */; };
+		A7BD30D3AF7CA9135D725963 /* VimCommandHelp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FEEA3A06B3444F666D6247F /* VimCommandHelp.swift */; };
 		B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C32FFAAAC97D2F8C9D555F /* LinkHintCoordinator.swift */; };
 		C2B97EEAE7416D29EDCA4B61 /* EventTapEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D59CB50E2605937670B3A1C /* EventTapEngine.swift */; };
 		C3E978198846A7C234D21F3C /* VimSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63F9A5BB959472464EFBE253 /* VimSettings.swift */; };
@@ -114,10 +116,12 @@
 		9359CE2014B60F97101624D9 /* BindingsRemapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingsRemapTests.swift; sourceTree = "<group>"; };
 		942AB09B3B5A4820F73B44E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9A1368746B58D900849CEC8E /* SafariBookmarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarks.swift; sourceTree = "<group>"; };
+		9FEEA3A06B3444F666D6247F /* VimCommandHelp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimCommandHelp.swift; sourceTree = "<group>"; };
 		A63B662FA15A787614BD7028 /* SettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStoreTests.swift; sourceTree = "<group>"; };
 		AF152EBC2DC52AEF0D2643EB /* ScreenCoordinatesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCoordinatesTests.swift; sourceTree = "<group>"; };
 		B6846A826D77028E8BAB1B7B /* SafariBookmarksPlistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariBookmarksPlistTests.swift; sourceTree = "<group>"; };
 		B8212FCD7AE373B1BF7E2AE7 /* USKeyboardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USKeyboardLayoutTests.swift; sourceTree = "<group>"; };
+		BBA07CEBEB9E6F8A9D7F0F4E /* HelpReferenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpReferenceTests.swift; sourceTree = "<group>"; };
 		C220DA08983ADC3B9320DA2E /* SafariURLPollerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariURLPollerTests.swift; sourceTree = "<group>"; };
 		CB12CCCCDE0BBB561429EBBF /* OverlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayManager.swift; sourceTree = "<group>"; };
 		D5FB745C4745727F1DD18A7B /* VomnibarCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VomnibarCoordinator.swift; sourceTree = "<group>"; };
@@ -184,6 +188,7 @@
 				410682D61578691074E4C89F /* ScreenCoordinates.swift */,
 				3ADF6D313D3FD5437453CF47 /* StatusMenuView.swift */,
 				8DE55A32FD697066857778A2 /* USKeyboardLayout.swift */,
+				9FEEA3A06B3444F666D6247F /* VimCommandHelp.swift */,
 				6ACA3EA84FB1D55F90624622 /* VimKeys.entitlements */,
 				6189A6AC773A645B6AD9BCCB /* VimKeysApp.swift */,
 				63F9A5BB959472464EFBE253 /* VimSettings.swift */,
@@ -202,6 +207,7 @@
 				9359CE2014B60F97101624D9 /* BindingsRemapTests.swift */,
 				46BE619C12A226F65451F974 /* BindingsStoreTests.swift */,
 				3E30AC60E30331E9BA1E79A8 /* BookmarksStoreTests.swift */,
+				BBA07CEBEB9E6F8A9D7F0F4E /* HelpReferenceTests.swift */,
 				0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */,
 				37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */,
 				B6846A826D77028E8BAB1B7B /* SafariBookmarksPlistTests.swift */,
@@ -338,6 +344,7 @@
 				1F6E30BDD7AA343370668F98 /* BindingsRemapTests.swift in Sources */,
 				4E586E2862999F8746FBAB55 /* BindingsStoreTests.swift in Sources */,
 				79EA3109B68EB6F24E904A6D /* BookmarksStoreTests.swift in Sources */,
+				95849EB4D964905BF06D1EEA /* HelpReferenceTests.swift in Sources */,
 				145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */,
 				F0ABC31E0DBF7F32A1A7B80C /* LinkHintEngineTests.swift in Sources */,
 				135234C8484AEC4A63ED1427 /* SafariBookmarksPlistTests.swift in Sources */,
@@ -385,6 +392,7 @@
 				679926D748503FB62A04AE3A /* SitesStore.swift in Sources */,
 				85DB839D20DA9EC340F6BBBF /* StatusMenuView.swift in Sources */,
 				6368B980DFE82DD0F925C862 /* USKeyboardLayout.swift in Sources */,
+				A7BD30D3AF7CA9135D725963 /* VimCommandHelp.swift in Sources */,
 				F96B50A1A1253FB0F0FE4654 /* VimKeysApp.swift in Sources */,
 				C3E978198846A7C234D21F3C /* VimSettings.swift in Sources */,
 				3BF71BBDA9A6C3E0CFEBD3C9 /* VimStateMachine.swift in Sources */,

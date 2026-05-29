@@ -31,6 +31,7 @@ struct SettingsStore {
             settings.hintAlphabet = alphabet
         }
         settings.disabledHosts = SitesStore().load()
+        settings.bindings = BindingsStore(defaults: defaults).load()
         return settings
     }
 
@@ -38,11 +39,13 @@ struct SettingsStore {
         defaults.set(settings.insertModeBehavior.rawValue, forKey: Key.insertModeBehavior)
         defaults.set(settings.hintAlphabet, forKey: Key.hintAlphabet)
         SitesStore().save(settings.disabledHosts)
+        BindingsStore(defaults: defaults).save(settings.bindings)
     }
 
     func reset() {
         defaults.removeObject(forKey: Key.insertModeBehavior)
         defaults.removeObject(forKey: Key.hintAlphabet)
         SitesStore().reset()
+        BindingsStore(defaults: defaults).reset()
     }
 }

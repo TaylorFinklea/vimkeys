@@ -5,7 +5,7 @@ import Foundation
 /// scroll/edge subset to non-`.passThrough` intents — every other command
 /// case exists so the state-machine and overlay surfaces can be wired in
 /// later milestones without renaming.
-enum VimCommand: String, CaseIterable, Hashable {
+enum VimCommand: String, CaseIterable, Hashable, Codable {
     // Scroll / edge (V-M1)
     case scrollDown
     case scrollUp
@@ -57,7 +57,7 @@ enum VimCommand: String, CaseIterable, Hashable {
 /// characters to `VimCommand`s. Multi-key chords (e.g. `gg`, `yy`) are
 /// represented as `(prefix, secondChar)` entries so the state machine can
 /// resolve them via two single-character lookups.
-struct VimBindings: Equatable {
+struct VimBindings: Equatable, Codable {
     /// Direct single-character chords typed in `.normal(.none)`.
     var singleChar: [String: VimCommand]
 

@@ -138,7 +138,7 @@ final class VomnibarCoordinator {
         guard let suggestion = selection else {
             // Nothing selected: fall back to treating the raw query as a
             // URL (or search query). Matches Vimium's "open" behavior.
-            if let url = candidateURL(from: query) {
+            if let url = QueryURL.candidate(from: query) {
                 openURL(url, suggestionKind: .url)
             }
             exit()
@@ -199,7 +199,7 @@ final class VomnibarCoordinator {
 
         var result: [VomnibarSuggestion] = []
 
-        if let direct = candidateURL(from: trimmed), direct.scheme != nil {
+        if let direct = QueryURL.candidate(from: trimmed) {
             result.append(VomnibarSuggestion(
                 title: trimmed,
                 url: direct,
@@ -211,7 +211,7 @@ final class VomnibarCoordinator {
         // the tracking-cookie chain — Vimium uses each user's default
         // engine, but we don't have a way to read Safari's preferred
         // engine via AppleScript without poking the prefs plist.
-        if let search = ddgSearchURL(for: trimmed) {
+        if let search = QueryURL.duckDuckGoSearch(for: trimmed) {
             result.append(VomnibarSuggestion(
                 title: "Search DuckDuckGo for \u{201C}\(trimmed)\u{201D}",
                 url: search,
@@ -238,24 +238,6 @@ final class VomnibarCoordinator {
         }
     }
 
-    private func candidateURL(from raw: String) -> URL? {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        if let url = URL(string: trimmed), url.scheme != nil {
-            return url
-        }
-        // Bare host: prepend https://.
-        if trimmed.contains(".") && !trimmed.contains(" "),
-           let url = URL(string: "https://" + trimmed) {
-            return url
-        }
-        return nil
-    }
-
-    private func ddgSearchURL(for query: String) -> URL? {
-        guard var components = URLComponents(string: "https://duckduckgo.com/") else { return nil }
-        components.queryItems = [URLQueryItem(name: "q", value: query)]
-        return components.url
-    }
 }
 
 private extension Array {

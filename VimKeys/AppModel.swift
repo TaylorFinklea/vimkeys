@@ -618,21 +618,8 @@ final class AppModel: ObservableObject {
     /// DuckDuckGo search if the clipboard contents don't parse as a URL.
     /// Used by `p` / `P` ("paste and go" — Vimium convention).
     func openClipboardURL(inNewTab: Bool) {
-        guard let raw = NSPasteboard.general.string(forType: .string),
-              !raw.isEmpty else { return }
-        let url: URL
-        if let parsed = URL(string: raw), parsed.scheme != nil {
-            url = parsed
-        } else if raw.contains("."), !raw.contains(" "),
-                  let stripped = URL(string: "https://" + raw) {
-            url = stripped
-        } else if var components = URLComponents(string: "https://duckduckgo.com/") {
-            components.queryItems = [URLQueryItem(name: "q", value: raw)]
-            guard let search = components.url else { return }
-            url = search
-        } else {
-            return
-        }
+        guard let raw = NSPasteboard.general.string(forType: .string), !raw.isEmpty,
+              let url = QueryURL.resolve(raw) else { return }
         safariBridge.open(url: url, inNewTab: inNewTab)
     }
 

@@ -42,7 +42,11 @@ enum Chord: Equatable, Hashable {
         guard key.count == 1 else { return nil }
         switch self {
         case .single:
-            guard !(key.first?.isNumber ?? false) else { return nil }
+            // Reserved characters the state machine resolves BEFORE the
+            // single-char table, so binding a command to one would be
+            // silently dead: digits start counts; lowercase `g` / `y` enter
+            // their prefix modes. (Uppercase `G` / `Y` are fine.)
+            guard !(key.first?.isNumber ?? false), key != "g", key != "y" else { return nil }
             return .single(key)
         case .g: return .g(key)
         case .y: return .y(key)

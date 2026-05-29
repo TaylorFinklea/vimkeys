@@ -358,8 +358,12 @@ final class AppModel: ObservableObject {
     /// to a different command, so every command stays reachable.
     @discardableResult
     func rebindCommand(_ command: VimCommand, toKey key: String) -> RebindResult {
-        guard let shape = settings.bindings.chords(for: command).first(where: \.isEditable),
-              let chord = shape.withKey(key) else {
+        // Shape from the command's current chord, or its default if it's
+        // somehow unbound (e.g. a hand-edited blob) — so an unbound command
+        // can still be reassigned rather than becoming a dead end.
+        let shape = settings.bindings.chords(for: command).first(where: \.isEditable)
+            ?? VimBindings.v1Default.chords(for: command).first(where: \.isEditable)
+        guard let shape, let chord = shape.withKey(key) else {
             return .invalidKey
         }
         if let holder = settings.bindings.command(for: chord), holder != command {
@@ -384,8 +388,12 @@ final class AppModel: ObservableObject {
     var remappableCommandsByCategory: [(category: VimCommand.Category, commands: [VimCommand])] {
         VimCommand.Category.allCases.compactMap { category in
             let commands = VimCommand.allCases.filter {
+                // Editable iff the command's DEFAULT shape is editable — based
+                // on the default (always present) so a currently-unbound
+                // command still appears and can be reassigned, rather than
+                // silently dropping out of the list.
                 $0.category == category
-                    && settings.bindings.chords(for: $0).contains(where: \.isEditable)
+                    && VimBindings.v1Default.chords(for: $0).contains(where: \.isEditable)
             }
             return commands.isEmpty ? nil : (category, commands)
         }

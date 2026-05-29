@@ -68,6 +68,11 @@ final class BindingsRemapTests: XCTestCase {
         XCTAssertNil(Chord.single("j").withKey("ab"))  // multi-char
         XCTAssertNil(Chord.single("j").withKey(""))    // empty
         XCTAssertNil(Chord.escape.withKey("x"))        // fixed chord
+        // Lowercase g/y trigger prefix modes before the single-char table,
+        // so they're reserved; uppercase G/Y are fine.
+        XCTAssertNil(Chord.single("j").withKey("g"))
+        XCTAssertNil(Chord.single("j").withKey("y"))
+        XCTAssertEqual(Chord.single("j").withKey("G"), .single("G"))
         XCTAssertEqual(Chord.single("j").withKey("/"), .single("/")) // symbol ok
         XCTAssertEqual(Chord.g("g").withKey("5"), .g("5"))           // digit ok after g
     }

@@ -57,6 +57,21 @@ final class BindingsRemapTests: XCTestCase {
         XCTAssertEqual(filled.command(for: .single("j")), .scrollDown)
     }
 
+    func testWithKeyPreservesShape() {
+        XCTAssertEqual(Chord.single("j").withKey("z"), .single("z"))
+        XCTAssertEqual(Chord.g("g").withKey("t"), .g("t"))
+        XCTAssertEqual(Chord.y("y").withKey("p"), .y("p"))
+    }
+
+    func testWithKeyRejectsInvalidKeys() {
+        XCTAssertNil(Chord.single("j").withKey("5"))   // digit on single-char
+        XCTAssertNil(Chord.single("j").withKey("ab"))  // multi-char
+        XCTAssertNil(Chord.single("j").withKey(""))    // empty
+        XCTAssertNil(Chord.escape.withKey("x"))        // fixed chord
+        XCTAssertEqual(Chord.single("j").withKey("/"), .single("/")) // symbol ok
+        XCTAssertEqual(Chord.g("g").withKey("5"), .g("5"))           // digit ok after g
+    }
+
     func testFilledWithDefaultsDoesNotClobberUserRemap() {
         // User moved scrollUp onto "j" (scrollDown's default chord) and
         // scrollDown is now unbound. Filling must NOT overwrite "j".

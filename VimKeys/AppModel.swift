@@ -345,6 +345,52 @@ final class AppModel: ObservableObject {
         eventTapService.updateSettings(settings)
     }
 
+    /// Outcome of a remap attempt from the Keys settings tab.
+    enum RebindResult: Equatable {
+        case ok
+        case invalidKey                 // empty, multi-char, or a digit on a single-char chord
+        case conflict(VimCommand)       // the key is already bound to another command
+    }
+
+    /// Rebind `command` to `key`, preserving the command's chord shape
+    /// (single / g-prefix / y-prefix — only the character changes). Refuses
+    /// (without changing anything) when the key is invalid or already bound
+    /// to a different command, so every command stays reachable.
+    @discardableResult
+    func rebindCommand(_ command: VimCommand, toKey key: String) -> RebindResult {
+        guard let shape = settings.bindings.chords(for: command).first(where: \.isEditable),
+              let chord = shape.withKey(key) else {
+            return .invalidKey
+        }
+        if let holder = settings.bindings.command(for: chord), holder != command {
+            return .conflict(holder)
+        }
+        settings.bindings = settings.bindings.rebinding(command, to: chord)
+        settingsStore.save(settings)
+        eventTapService.updateSettings(settings)
+        return .ok
+    }
+
+    /// Restore every binding to the v1 defaults.
+    func resetBindingsToDefault() {
+        guard settings.bindings != .v1Default else { return }
+        settings.bindings = .v1Default
+        settingsStore.save(settings)
+        eventTapService.updateSettings(settings)
+    }
+
+    /// Editable (remappable) commands grouped by category for the Keys tab.
+    /// Excludes the Escape-resolved commands, which are fixed.
+    var remappableCommandsByCategory: [(category: VimCommand.Category, commands: [VimCommand])] {
+        VimCommand.Category.allCases.compactMap { category in
+            let commands = VimCommand.allCases.filter {
+                $0.category == category
+                    && settings.bindings.chords(for: $0).contains(where: \.isEditable)
+            }
+            return commands.isEmpty ? nil : (category, commands)
+        }
+    }
+
     func setHintAlphabet(_ alphabet: String) {
         // Strip whitespace and case-normalize so the persisted value
         // matches what `LinkHintEngine` consumes. Empty string falls back

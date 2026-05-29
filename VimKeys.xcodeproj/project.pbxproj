@@ -10,6 +10,7 @@
 		037A599E2DF7CF12FE0D2FDB /* PermissionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B99829E68796F87CA56BC18 /* PermissionController.swift */; };
 		08C26D4A732097EDC86E7889 /* LinkHintEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FD49DCDC53D5540670E20F /* LinkHintEngine.swift */; };
 		08DF777457F9B98F206B81F3 /* SitesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733859216D77D02BFEEFD8C2 /* SitesStoreTests.swift */; };
+		0A72F05BBC710F6ABD15362C /* KeysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D009B1B30F9FAB69C98C655 /* KeysView.swift */; };
 		135234C8484AEC4A63ED1427 /* SafariBookmarksPlistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6846A826D77028E8BAB1B7B /* SafariBookmarksPlistTests.swift */; };
 		1410B4C19F0E740C36EA7140 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA9D65BC2F543890BC1F4BE0 /* Sparkle */; };
 		145EB7088EE741755FE65E9F /* KeyCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C0BEE7B1A705BFD0252CAFB /* KeyCatalogTests.swift */; };
@@ -85,6 +86,7 @@
 		164FDFCFEBCBD4F6DA118795 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		1A436DBB67699499A37E5C9D /* KeyboardLayoutCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardLayoutCache.swift; sourceTree = "<group>"; };
 		1B99829E68796F87CA56BC18 /* PermissionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionController.swift; sourceTree = "<group>"; };
+		1D009B1B30F9FAB69C98C655 /* KeysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeysView.swift; sourceTree = "<group>"; };
 		20A92B62749BD7E48E714683 /* VimStateMachineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VimStateMachineTests.swift; sourceTree = "<group>"; };
 		2EDB80F84565BA437686D9DF /* SafariRoleClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariRoleClassifierTests.swift; sourceTree = "<group>"; };
 		37C6C4E55A64EFC5E8AD4F84 /* LinkHintEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkHintEngineTests.swift; sourceTree = "<group>"; };
@@ -236,6 +238,7 @@
 		B324E757EF9125B720148469 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				1D009B1B30F9FAB69C98C655 /* KeysView.swift */,
 				034AE2C7D5C982723685AA72 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -374,6 +377,7 @@
 				D9766F2EF69BD8227882F7EA /* HintOverlayWindow.swift in Sources */,
 				5E7346DC55AC5BC150384642 /* KeyCatalog.swift in Sources */,
 				808C03952C75ABEF7C80DCA9 /* KeyboardLayoutCache.swift in Sources */,
+				0A72F05BBC710F6ABD15362C /* KeysView.swift in Sources */,
 				7D3F61E34BA0F49D1EF75E48 /* LaunchAtLoginController.swift in Sources */,
 				B008C392E6B077B6C47FFD4C /* LinkHintCoordinator.swift in Sources */,
 				08C26D4A732097EDC86E7889 /* LinkHintEngine.swift in Sources */,

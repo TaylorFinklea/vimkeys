@@ -32,6 +32,23 @@ enum Chord: Equatable, Hashable {
         case .escape, .escapeEscape: return false
         }
     }
+
+    /// A chord of the SAME shape with a different key character — used by
+    /// the remap UI, which changes a command's key while keeping its
+    /// single / g-prefix / y-prefix shape. Returns nil for a multi-character
+    /// key, for a digit on a single-char chord (`1`–`9` start counts, `0`
+    /// can't begin one), or for the fixed Escape chords.
+    func withKey(_ key: String) -> Chord? {
+        guard key.count == 1 else { return nil }
+        switch self {
+        case .single:
+            guard !(key.first?.isNumber ?? false) else { return nil }
+            return .single(key)
+        case .g: return .g(key)
+        case .y: return .y(key)
+        case .escape, .escapeEscape: return nil
+        }
+    }
 }
 
 extension VimBindings {

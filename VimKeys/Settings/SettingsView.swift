@@ -10,9 +10,9 @@ struct SettingsView: View {
                     Label("General", systemImage: "gearshape")
                 }
 
-            bindingsPlaceholderView
+            KeysView(model: model)
                 .tabItem {
-                    Label("Bindings", systemImage: "keyboard")
+                    Label("Keys", systemImage: "keyboard")
                 }
 
             sitesPlaceholderView
@@ -184,62 +184,6 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
 
-            Spacer()
-        }
-    }
-
-    private var bindingsPlaceholderView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Bindings")
-                .font(.title2.weight(.semibold))
-
-            Form {
-                Section("Link hints") {
-                    TextField(
-                        "Hint alphabet",
-                        text: Binding(
-                            get: { model.settings.hintAlphabet },
-                            set: { model.setHintAlphabet($0) }
-                        )
-                    )
-
-                    Text("Characters used to label clickable elements in hint mode (\u{0060}f\u{0060} / \u{0060}F\u{0060}). Vimium's default home-row alphabet is \u{0060}sadfjkl;ehiwopvbnm\u{0060}. Stick to lowercase letters; the matcher is case-insensitive.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                    Button("Reset to default") {
-                        model.setHintAlphabet(LinkHintEngine.defaultAlphabet)
-                    }
-                }
-
-                Section("Reference") {
-                    bindingRow("j / k / h / l", "Scroll down / up / left / right")
-                    bindingRow("d / u", "Half-page down / up")
-                    bindingRow("gg / G", "Top / bottom of page")
-                    bindingRow("f / F", "Click hint / open in new tab")
-                    bindingRow("gi", "Focus first text input")
-                    bindingRow("gs", "View source (Cmd+Opt+U)")
-                    bindingRow("/ n N", "Find / next / previous")
-                    bindingRow("H L", "History back / forward")
-                    bindingRow("r R", "Reload / hard reload")
-                    bindingRow("i Esc", "Insert mode / leave insert mode")
-                    bindingRow("?", "Toggle help overlay")
-                }
-            }
-            .formStyle(.grouped)
-
-            Spacer()
-        }
-    }
-
-    @ViewBuilder
-    private func bindingRow(_ chord: String, _ command: String) -> some View {
-        HStack(spacing: 12) {
-            Text(chord)
-                .font(.system(.body, design: .monospaced))
-                .frame(width: 110, alignment: .leading)
-            Text(command)
-                .foregroundStyle(.secondary)
             Spacer()
         }
     }

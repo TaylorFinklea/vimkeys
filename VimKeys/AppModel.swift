@@ -54,13 +54,10 @@ final class AppModel: ObservableObject {
     private let safariBridge: SafariBridge
     private let userDefaults: UserDefaults
 
-    /// Repeating timer that polls `SafariBridge.currentURL()` while Safari
-    /// is frontmost. Cancelled when Safari becomes background. Cheap —
-    /// the AE call is local. Cadence (1.5s) is the trade-off between
-    /// per-site latency and CPU; bump down if it feels sluggish.
-    private var urlPollTimer: DispatchSourceTimer?
-    private static let urlPollInterval: DispatchTimeInterval = .milliseconds(1500)
-    private var lastReportedURL: URL?
+    /// Polls Safari's frontmost URL (1.5s) while Safari is frontmost to
+    /// drive the per-site ignorelist + Esc-Esc. Owns the timer + dedupe;
+    /// see `SafariURLPoller`.
+    private let urlPoller: SafariURLPoller
     private var cancellables = Set<AnyCancellable>()
 
     static let didShowLaunchAtLoginPromptKey = "didShowLaunchAtLoginPrompt"
@@ -104,6 +101,12 @@ final class AppModel: ObservableObject {
 
         let service = eventTapService ?? EventTapService(settings: loadedSettings)
         self.eventTapService = service
+
+        urlPoller = SafariURLPoller(
+            hasAccess: { safariBridge.hasAccess },
+            currentURL: { safariBridge.currentURL() },
+            onURLChange: { [weak service] url in service?.updateCurrentURL(url) }
+        )
 
         let controller = launchAtLoginController ?? LaunchAtLoginController()
         self.launchAtLoginController = controller
@@ -244,7 +247,7 @@ final class AppModel: ObservableObject {
         let safariFrontmostAtLaunch = SafariObserver.isSafariFrontmost()
         service.updateSafariFrontmost(safariFrontmostAtLaunch)
         if safariFrontmostAtLaunch {
-            startURLPoll()
+            urlPoller.start()
         }
 
         if !didShowLaunchAtLoginPrompt && !Self.isRunningUnderXCTest {
@@ -462,63 +465,9 @@ final class AppModel: ObservableObject {
     func safariFrontmostChanged(_ isFrontmost: Bool) {
         eventTapService.updateSafariFrontmost(isFrontmost)
         if isFrontmost {
-            startURLPoll()
+            urlPoller.start()
         } else {
-            stopURLPoll()
-        }
-    }
-
-    /// Begin polling Safari's frontmost URL. AppleScript polling is
-    /// cheaper than continuous AX observation here — AX's URL-changed
-    /// notification isn't reliable on all Safari versions, and a 1.5s
-    /// poll matches Vimium's "couple-second" latency expectations.
-    private func startURLPoll() {
-        stopURLPoll()
-        // Fire once immediately so the disabled-by-site state is current
-        // before the user has a chance to press a key. The timer keeps
-        // running even before Automation is granted; each tick re-checks
-        // permission (without prompting) and starts feeding URLs the moment
-        // the user grants access via a gesture or the Permissions button.
-        pollSafariURL()
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + Self.urlPollInterval, repeating: Self.urlPollInterval)
-        timer.setEventHandler { [weak self] in
-            self?.pollSafariURL()
-        }
-        urlPollTimer = timer
-        timer.resume()
-    }
-
-    private func stopURLPoll() {
-        urlPollTimer?.cancel()
-        urlPollTimer = nil
-        lastReportedURL = nil
-        // Deliberately do NOT push `updateCurrentURL(nil)` here. Nulling the
-        // URL on every Cmd-Tab away cleared the disabled-by-site state, so
-        // returning to a disabled site flashed VimKeys back on (live) until
-        // the next poll round-tripped — and if that first poll hit a
-        // transient nil, it stayed on. Retaining the last URL lets
-        // `updateSafariFrontmost(true)` re-enter `.disabledBySite`
-        // immediately on return; the resumed poll then re-confirms. (A
-        // windowless-but-frontmost Safari just retains the stale URL until
-        // the next navigation — preferable to flapping the site enabled.)
-    }
-
-    private func pollSafariURL() {
-        // Check permission WITHOUT prompting. The background poll must never
-        // raise the Automation consent dialog (it would pop unbidden while
-        // the user is mid-task in Safari); the grant comes from an explicit
-        // gesture (o / O / T / yy) or the Permissions button instead.
-        guard safariBridge.hasAccess else { return }
-        // A nil here means a transient AppleScript failure (or no windows,
-        // which the frontmost transition already handles). Do NOT forward
-        // it: pushing `updateCurrentURL(nil)` would reconcile a genuinely
-        // disabled site back to enabled until the next good poll. Preserve
-        // the last known URL and wait for a real one.
-        guard let url = safariBridge.currentURL() else { return }
-        if url != lastReportedURL {
-            lastReportedURL = url
-            eventTapService.updateCurrentURL(url)
+            urlPoller.stop()
         }
     }
 
